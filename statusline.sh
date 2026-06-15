@@ -46,23 +46,10 @@ if [ -f "$conf" ]; then
   done < "$conf"
 fi
 
-# Codex 최신 세션의 마지막 rate_limits 이벤트 한 줄을 추출(있으면)
-codex_dir="${CC_USAGE_CODEX_DIR:-$HOME/.codex/sessions}"
-codex_file=$(ls -t "$codex_dir"/*/*/*/rollout-*.jsonl 2>/dev/null | head -n 1)
-if [ -n "$codex_file" ]; then
-  # 큰 세션 파일(수 MB) 전체를 매 렌더마다 훑지 않도록 끝부분만 — 최신 rate_limits는 파일 끝 근처
-  export CC_USAGE_CODEX_LINE="$(tail -n 400 "$codex_file" 2>/dev/null | grep '"rate_limits"' | tail -n 1)"
-fi
-
 node -e '
 const fs=require("fs");
 let d={};try{d=JSON.parse(fs.readFileSync(0,"utf8"))}catch(e){}
 const rl=d.rate_limits||{};
-
-// Codex rate_limits (primary=5h, secondary=weekly), 필드명이 다름(used_percent)
-let cx={};
-try{cx=JSON.parse(process.env.CC_USAGE_CODEX_LINE).payload.rate_limits||{}}catch(e){}
-const cxNorm=o=>o?{used_percentage:o.used_percent,resets_at:o.resets_at}:null;
 
 const env=process.env;
 const cfg={
@@ -75,6 +62,37 @@ const cfg={
   crit:parseInt(env.CC_USAGE_CRIT||"80",10),
   color:!env.NO_COLOR,
 };
+
+// Codex: cx 세그먼트가 있을 때만 최신 세션 파일 끝부분(≤256KB)에서 마지막 rate_limits 추출.
+// 서브셸(ls/tail/grep) 없이 node 안에서 처리 → 가벼움. primary=5h, secondary=weekly.
+let cx={};
+if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
+  try{
+    const root=env.CC_USAGE_CODEX_DIR||require("os").homedir()+"/.codex/sessions";
+    let newest=null,nm=-1;
+    const walk=(dir,depth)=>{
+      let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return}
+      for(const e of ents){const p=dir+"/"+e.name;
+        if(depth<3){if(e.isDirectory())walk(p,depth+1)}
+        else if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
+          let m;try{m=fs.statSync(p).mtimeMs}catch(_){continue}
+          if(m>nm){nm=m;newest=p}}}
+    };
+    walk(root,0);
+    if(newest){
+      const fd=fs.openSync(newest,"r"),sz=fs.fstatSync(fd).size,n=Math.min(sz,262144);
+      const b=Buffer.alloc(n);fs.readSync(fd,b,0,n,sz-n);fs.closeSync(fd);
+      const arr=b.toString("utf8").split("\n");
+      for(let i=arr.length-1;i>=0;i--){
+        if(arr[i].includes("\"rate_limits\"")){
+          try{cx=JSON.parse(arr[i]).payload.rate_limits||{}}catch(_){}
+          if(Object.keys(cx).length)break;
+        }
+      }
+    }
+  }catch(e){}
+}
+const cxNorm=o=>o?{used_percentage:o.used_percent,resets_at:o.resets_at}:null;
 // 라벨 태그: 공급자(cc/cx) + 윈도우(5h/7d) + ctx. 기본은 글자, 무엇이든(이모지 포함) 교체 가능.
 const tag={
   cc:  env.CC_USAGE_TAG_CC  ?? "CC",

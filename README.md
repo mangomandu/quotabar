@@ -1,10 +1,14 @@
 # quotabar
 
+*[English](./README.md) · [한국어](./README.ko.md)*
+
 A tiny [Claude Code](https://claude.com/claude-code) statusline that shows your AI coding **usage limits** — the 5-hour and weekly quota you actually care about on flat-rate plans — as colored bars. It tracks **[Claude Code](https://claude.com/claude-code) and [Codex](https://github.com/openai/codex) side by side**, plus context %, model, and session cost.
+
+![quotabar statusline](./screenshot.svg)
 
 > It installs as a Claude Code statusline (that's the host), and additionally reads Codex's local session data so both agents' limits show in one place.
 
-No dependencies beyond `bash` + `node` (which Claude Code already needs). One file.
+No dependencies beyond `bash` + `node` (which Claude Code already needs). One file, one short-lived `node` process per render.
 
 ```
 CC 5h  ▰▰▱▱▱▱▱▱▱▱   16%  · 3h08m   CC 7d  ▰▰▰▰▰▰▰▱▱▱   69%  · 1d7h
@@ -86,7 +90,9 @@ See [`cc-usage.conf`](./cc-usage.conf) for the annotated template.
 
 ## How it works
 
-On each render Claude Code pipes a JSON blob to the statusline command. This script reads `rate_limits` (`five_hour` / `seven_day`, with `used_percentage` and an epoch `resets_at`), plus `context_window`, `cost`, and `model`. For Codex, it reads the newest session rollout under `~/.codex/sessions/**/rollout-*.jsonl` and pulls the last `rate_limits` event (`primary` = 5h, `secondary` = weekly). All rendering is done in an embedded `node` one-liner.
+On each render Claude Code pipes a JSON blob to the statusline command. This script reads `rate_limits` (`five_hour` / `seven_day`, with `used_percentage` and an epoch `resets_at`), plus `context_window`, `cost`, and `model`. For Codex, it finds the newest session rollout under `~/.codex/sessions/**/rollout-*.jsonl` and reads just the tail to pull the last `rate_limits` event (`primary` = 5h, `secondary` = weekly).
+
+Everything happens in **one short-lived `node` process** — no `ls`/`grep`/`tail` subprocesses, and Codex is read only when `cx*` segments are enabled. Typical overhead is ~20 ms per render (almost entirely Node startup), and Claude Code only re-runs it on activity, so it's effectively free.
 
 ## Notes & limitations
 
