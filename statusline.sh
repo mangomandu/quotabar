@@ -192,9 +192,9 @@ const render=key=>{
   const p=Math.round(raw);
   let out=(h?h+"  ":"")+bar(p)+"  "+col(p)+C.B+String(p).padStart(3)+"%"+C.R;
   if(s.type==="limit"){
-    const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;
+    const t=ms(o), expired=t!=null&&Date.now()>=t;   // 윈도우가 이미 리셋됨 → 카운트다운 무의미
+    if(!expired){const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;}
     if(s.prov==="cx"){                       // Codex 리셋 인지 + stale 마커
-      const t=ms(o), expired=t!=null&&Date.now()>=t;            // 윈도우가 이미 리셋됨
       const old=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000; // 데이터가 오래됨
       if(expired||old){
         const am=cxTs>0?Math.floor((Date.now()-cxTs)/60000):0;
