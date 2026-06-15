@@ -94,6 +94,29 @@ On each render Claude Code pipes a JSON blob to the statusline command. This scr
 
 Everything happens in **one short-lived `node` process** — no `ls`/`grep`/`tail` subprocesses, and Codex is read only when `cx*` segments are enabled. Typical overhead is ~20 ms per render (almost entirely Node startup), and Claude Code only re-runs it on activity, so it's effectively free.
 
+## Performance & footprint
+
+quotabar has **no daemon, no timer, no autostart**. It runs only when Claude Code re-renders the statusline (throttled to ~once per 300 ms, and only on activity), then exits. When you're idle, it does nothing.
+
+Measured per render:
+
+- **CPU**: ~20 ms on one core — almost entirely Node startup (V8 init). Bursty during activity, **0 when idle**.
+- **RAM**: ~47 MB transient for the Node process, **freed on exit** — nothing stays resident, no leak.
+- **Network / Ethernet**: **none** — it only reads stdin and local files; there is no socket or HTTP code at all.
+- **Disk**: negligible (the config, plus ≤256 KB from the tail of one Codex session file, and only when `cx*` rows are enabled).
+
+Compared to an always-on monitor like [RunCat](https://kyome.io/runcat/) (a menu-bar app that continuously polls CPU and animates an icon):
+
+| | quotabar | RunCat-style resident monitor |
+|---|---|---|
+| Model | event-driven; runs only on render | persistent daemon + its own timer |
+| Idle | **0** (nothing runs) | continuous small CPU + wakeups |
+| RAM | transient, freed on exit | held resident the whole time |
+| Network | none | none |
+| Battery | no idle wakeups → friendly | constant animation → slight drain |
+
+**Honest downside:** each render spawns a fresh `node` (the ~20 ms startup), so per update it does more work than a long-lived app's in-process tick — but it fires far less often and never when idle. Under continuous streaming the throttle caps it at a few `node` spawns/sec (a few % of one core), dropping to zero the moment you stop. This Node-startup cost is shared by any Node-based statusline (e.g. `ccusage`); quotabar just avoids the extra `ls`/`grep`/`tail` subprocesses on top.
+
 ## Notes & limitations
 
 - **Codex freshness**: Codex values reflect the last time Codex ran (that's when it writes the data). The reset countdown stays accurate; the % is last-known.
