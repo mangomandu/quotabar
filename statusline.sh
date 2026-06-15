@@ -22,7 +22,7 @@
 #   CC_USAGE_CRIT      빨강 임계 %(기본 80)
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
-#   CC_USAGE_STALE_MIN Codex 데이터가 이 분(min) 넘게 묵으면 ~마커. 기본 30. 0=마커 끔
+#   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle ~Xh'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
 #   NO_COLOR           비어있지 않게 설정 시 색상 비활성(no-color.org 관례)
 #
 # 위 변수들은 설정 파일 ~/.claude/cc-usage.conf 에 "KEY=value" 한 줄씩 적어두면
@@ -160,7 +160,9 @@ const resetStr=o=>{
   return rel;
 };
 
-const staleMin=parseInt(env.CC_USAGE_STALE_MIN||"30",10);  // Codex 데이터가 이 분(min)보다 오래되면 ~마커
+const staleMin=parseInt(env.CC_USAGE_STALE_MIN||"30",10);  // Codex가 이 분(min) 넘게 안 돌면 idle 로 접음
+const cxAge=()=>{const m=Math.floor((Date.now()-cxTs)/60000);return m>=60?"~"+Math.floor(m/60)+"h":"~"+m+"m";};
+const codexStale=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000;
 // prov=공급자 태그키(cc/cx), win=윈도우 태그키(5h/7d), tagKey=단일 태그(ctx 등)
 const SEG={
   "5h":   {prov:"cc", win:"5h", type:"limit", get:()=>rl.five_hour},
@@ -183,6 +185,7 @@ const head=s=>{
 };
 const render=key=>{
   const s=SEG[key];if(!s)return null;
+  if(s.prov==="cx"&&codexStale)return null;   // Codex 스테일 → 개별 막대 대신 collapse 토큰(아래)
   const o=s.get();
   const h=head(s);
   if(s.type==="text"){if(!o)return null;return (h?h+" ":"")+C.DIM+o+C.R;}
@@ -194,20 +197,18 @@ const render=key=>{
   if(s.type==="limit"){
     const t=ms(o), expired=t!=null&&Date.now()>=t;   // 윈도우가 이미 리셋됨 → 카운트다운 무의미
     if(!expired){const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;}
-    if(s.prov==="cx"){                       // Codex 리셋 인지 + stale 마커
-      const old=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000; // 데이터가 오래됨
-      if(expired||old){
-        const am=cxTs>0?Math.floor((Date.now()-cxTs)/60000):0;
-        out+=" "+C.DIM+(cxTs>0?(am>=60?"~"+Math.floor(am/60)+"h":"~"+am+"m"):"~")+C.R;
-      }
-    }
   }
   return out;
 };
 
-const lines=cfg.rows
+let lines=cfg.rows
   .map(row=>row.map(render).filter(Boolean).join("   "))
   .filter(Boolean);
+// Codex 스테일 → Cx idle ~Xh 한 토막으로 접어 CC(첫 줄) 뒤에 이어붙임
+if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
+  const tok=C.DIM+(tag.cx||"Cx")+" idle "+cxAge()+C.R;
+  if(lines.length)lines[0]+="   "+tok; else lines=[tok];
+}
 process.stdout.write(lines.join("\n"));
 ')
 printf '%s' "$out"

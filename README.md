@@ -86,7 +86,7 @@ CC_USAGE_TAGCOLOR_CX=purple   # (color emoji like 🟧 ignore this — they carr
 
 **Appearance**: `CC_USAGE_BARS` (cells) · `CC_USAGE_WARN`/`CC_USAGE_CRIT` (% thresholds) · `CC_USAGE_STYLE=ascii` (bars as `#-`) · `NO_COLOR=1`
 
-**Performance / freshness**: `CC_USAGE_CACHE_TTL` (reuse output for N seconds per session, default `2`, `0` to disable) · `CC_USAGE_STALE_MIN` (flag Codex rows older than N minutes, default `30`, `0` to disable)
+**Performance / freshness**: `CC_USAGE_CACHE_TTL` (reuse output for N seconds per session, default `2`, `0` to disable) · `CC_USAGE_STALE_MIN` (when Codex hasn't run in N minutes, collapse its rows into a compact `Cx idle ~Nh` tag after Claude Code; default `30`, `0` to disable)
 
 See [`cc-usage.conf`](./cc-usage.conf) for the annotated template.
 
@@ -123,7 +123,7 @@ It also **caches its output per session for `CC_USAGE_CACHE_TTL` seconds** (defa
 
 ## Notes & limitations
 
-- **Codex freshness**: Codex values reflect the last time Codex ran (that's when it writes the data). The reset countdown stays accurate; the % is last-known. When the data is older than `CC_USAGE_STALE_MIN` (default 30 min) or its window has already reset, the Codex row is flagged with a dim `~age` marker (e.g. `~45m`, `~2h`).
+- **Codex freshness**: Codex values reflect the last time Codex ran (that's when it writes the data). When Codex hasn't run in `CC_USAGE_STALE_MIN` minutes (default 30), its rows collapse into a compact `Cx idle ~age` tag appended after Claude Code (e.g. `… CC 7d … 74% · 1d2h   Cx idle ~4h`), so a stale Codex doesn't take a full row or imply live numbers. quotabar can't refresh Codex itself — only Codex writes that data when it runs — so this just reports the staleness honestly.
 - **Terminal glyphs**: some terminals force emoji presentation on symbols like ☁, ignoring color. Stick to plain dingbats (`✿ ⬢ ● ◆`) for reliable custom colors, or use colored emoji squares (🟧 🟪).
 - **Refresh cadence**: Claude Code re-runs the statusline on activity (throttled), so the % tracks near-real-time, not as a live ticking counter.
 
