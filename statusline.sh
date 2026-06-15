@@ -21,6 +21,8 @@
 #   CC_USAGE_WARN      노랑 임계 %(기본 50)
 #   CC_USAGE_CRIT      빨강 임계 %(기본 80)
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
+#   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
+#   CC_USAGE_STALE_MIN Codex 데이터가 이 분(min) 넘게 묵으면 ~마커. 기본 30. 0=마커 끔
 #   NO_COLOR           비어있지 않게 설정 시 색상 비활성(no-color.org 관례)
 #
 # 위 변수들은 설정 파일 ~/.claude/cc-usage.conf 에 "KEY=value" 한 줄씩 적어두면
@@ -46,7 +48,23 @@ if [ -f "$conf" ]; then
   done < "$conf"
 fi
 
-node -e '
+# --- 캐시(#1): 같은 세션의 잦은 재렌더 시 node 미기동. TTL 내 + conf 미변경이면 캐시 사용 ---
+IN=$(cat)                                                  # stdin(JSON) 캡처
+ttl="${CC_USAGE_CACHE_TTL:-2}"; case "$ttl" in *[!0-9]*) ttl=0;; esac
+sid=default
+case "$IN" in *'"session_id":"'*) sid="${IN#*\"session_id\":\"}"; sid="${sid%%\"*}";; esac
+case "$sid" in *[!A-Za-z0-9._-]*|'') sid=default;; esac     # 안전한 파일명만
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid"
+if [ "$ttl" -gt 0 ] && [ -f "$cache.o" ] && [ -f "$cache.t" ] && [ ! "$conf" -nt "$cache.t" ]; then
+  IFS= read -r _ts < "$cache.t" 2>/dev/null || _ts=0
+  case "$_ts" in ''|*[!0-9]*) _ts=0;; esac
+  _now=$(date +%s 2>/dev/null || echo 0)
+  if [ "$(( _now - _ts ))" -ge 0 ] && [ "$(( _now - _ts ))" -lt "$ttl" ]; then
+    cat "$cache.o"; exit 0
+  fi
+fi
+
+out=$(printf '%s' "$IN" | node -e '
 const fs=require("fs");
 let d={};try{d=JSON.parse(fs.readFileSync(0,"utf8"))}catch(e){}
 const rl=d.rate_limits||{};
@@ -65,7 +83,7 @@ const cfg={
 
 // Codex: cx 세그먼트가 있을 때만 최신 세션 파일 끝부분(≤256KB)에서 마지막 rate_limits 추출.
 // 서브셸(ls/tail/grep) 없이 node 안에서 처리 → 가벼움. primary=5h, secondary=weekly.
-let cx={};
+let cx={},cxTs=0;
 if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
   try{
     const root=env.CC_USAGE_CODEX_DIR||require("os").homedir()+"/.codex/sessions";
@@ -85,7 +103,7 @@ if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
       const arr=b.toString("utf8").split("\n");
       for(let i=arr.length-1;i>=0;i--){
         if(arr[i].includes("\"rate_limits\"")){
-          try{cx=JSON.parse(arr[i]).payload.rate_limits||{}}catch(_){}
+          try{const pj=JSON.parse(arr[i]);cx=pj.payload.rate_limits||{};cxTs=Date.parse(pj.timestamp)||0}catch(_){}
           if(Object.keys(cx).length)break;
         }
       }
@@ -142,6 +160,7 @@ const resetStr=o=>{
   return rel;
 };
 
+const staleMin=parseInt(env.CC_USAGE_STALE_MIN||"30",10);  // Codex 데이터가 이 분(min)보다 오래되면 ~마커
 // prov=공급자 태그키(cc/cx), win=윈도우 태그키(5h/7d), tagKey=단일 태그(ctx 등)
 const SEG={
   "5h":   {prov:"cc", win:"5h", type:"limit", get:()=>rl.five_hour},
@@ -172,7 +191,17 @@ const render=key=>{
   if(!Number.isFinite(raw))return null;   // 숫자 아니면 NaN% 대신 항목 숨김
   const p=Math.round(raw);
   let out=(h?h+"  ":"")+bar(p)+"  "+col(p)+C.B+String(p).padStart(3)+"%"+C.R;
-  if(s.type==="limit"){const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;}
+  if(s.type==="limit"){
+    const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;
+    if(s.prov==="cx"){                       // Codex 리셋 인지 + stale 마커
+      const t=ms(o), expired=t!=null&&Date.now()>=t;            // 윈도우가 이미 리셋됨
+      const old=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000; // 데이터가 오래됨
+      if(expired||old){
+        const am=cxTs>0?Math.floor((Date.now()-cxTs)/60000):0;
+        out+=" "+C.DIM+(cxTs>0?(am>=60?"~"+Math.floor(am/60)+"h":"~"+am+"m"):"~")+C.R;
+      }
+    }
+  }
   return out;
 };
 
@@ -180,4 +209,9 @@ const lines=cfg.rows
   .map(row=>row.map(render).filter(Boolean).join("   "))
   .filter(Boolean);
 process.stdout.write(lines.join("\n"));
-'
+')
+printf '%s' "$out"
+# 캐시 갱신(실패해도 무시)
+if [ "$ttl" -gt 0 ]; then
+  mkdir -p "$cache_dir" 2>/dev/null && { printf '%s' "$out" > "$cache.o" && date +%s > "$cache.t"; } 2>/dev/null
+fi
