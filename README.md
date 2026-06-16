@@ -37,20 +37,7 @@ A statusline runs on *every* render, so it has to be nearly free. quotabar was a
 
 > **TL;DR** — on the common path (cache hit) a render is **~6 ms / ~3.4 MB with no Node spawned**, about **5× lighter than `ccusage`**. No daemon, timer, or socket. No exploit found in any of the three audits.
 
-### Per render — one statusline update
-
-| | quotabar — cache hit *(the common case)* | quotabar — cache miss | `ccusage statusline` |
-|---|---|---|---|
-| **time** | **~6 ms** | ~32 ms | ~32 ms |
-| **peak memory** | **~3.4 MB** *(no Node spawned)* | ~45 MB | ~48 MB |
-| **network** | **none** | none | none |
-| **background process** | **none** | none | none |
-
-- quotabar **caches its output per session** (default 2 s), so most renders skip Node entirely → **~6 ms, about 5× lighter than `ccusage`**, which pays full Node startup on every render.
-- A cold render is a single short-lived `node` (~22 ms of which is Node's own startup) — on par with ccusage.
-- **No daemon, no timer, no sockets.** It does literally nothing when you're idle — unlike always-on monitors (e.g. RunCat) that poll and animate continuously.
-
-### Footprint vs other tools
+### Footprint — per render
 
 This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
@@ -58,10 +45,14 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 |---|---|---|---|
 | type | statusline — runs per render | statusline — runs per render | **persistent menu-bar app** |
 | when you're idle | **nothing runs** | nothing runs | runs continuously (polls + animates) |
-| per update | **~5 ms** *(cache hit)* · ~32 ms cold | ~32 ms | continuous low CPU |
-| memory | transient, freed (3.4–45 MB) | transient, freed (~48 MB) | **resident the whole time** |
-| network | none | none | none |
+| time / render | **~6 ms** cache hit *(the common case)* · ~32 ms cold | ~32 ms | continuous low CPU |
+| peak memory | **~3.4 MB** cache hit *(no Node spawned)* · ~45 MB cold | ~48 MB | **resident the whole time** |
+| network | **none** | none | none |
 | background process | **none** | none | **always-on daemon** |
+
+- quotabar **caches its output per session** (default 2 s), so most renders skip Node entirely → **~6 ms, about 5× lighter than `ccusage`**, which pays full Node startup on every render.
+- A cold render is a single short-lived `node` (~22 ms of which is Node's own startup) — on par with ccusage.
+- **No daemon, no timer, no sockets.** It does literally nothing when you're idle — unlike always-on monitors (e.g. RunCat) that poll and animate continuously.
 
 > **Verdikt verdict** — sealed holdout, paired trials, bootstrap CI:
 > ```
