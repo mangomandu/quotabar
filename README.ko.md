@@ -1,14 +1,33 @@
+<div align="center">
+
 # quotabar
 
-*[English](./README.md) · [한국어](./README.ko.md)*
+**Claude Code + Codex 사용 한도를, 상태줄에서 바로.**
 
-[Claude Code](https://claude.com/claude-code) 상태줄(statusline)에 AI 코딩 **사용 한도** — 정액제에서 진짜 신경 쓰이는 5시간/주간 한도 —를 색 막대로 보여주는 작은 도구입니다. **[Claude Code](https://claude.com/claude-code)와 [Codex](https://github.com/openai/codex)를 한 줄에 나란히** 추적하고, 컨텍스트 %·모델·세션 비용도 함께 표시합니다.
+[English](./README.md) · [한국어](./README.ko.md)
+
+<br>
 
 ![quotabar](./assets/demo.png)
 
-> Claude Code의 statusline으로 설치되며(호스트), 추가로 Codex의 로컬 세션 데이터를 읽어 두 에이전트의 한도를 한 곳에 모아 보여줍니다.
+<br>
 
-`bash` + `node`(Claude Code가 이미 씀)만 필요. **파일 하나. 데몬 없음. 네트워크 없음.**
+![license MIT](https://img.shields.io/badge/license-MIT-d77757?style=flat-square)
+![deps bash + node](https://img.shields.io/badge/deps-bash_%2B_node-5769f7?style=flat-square)
+![cache hit ~6ms](https://img.shields.io/badge/cache_hit-~6ms_%2F_3.4MB-d77757?style=flat-square)
+![audited 3 ways](https://img.shields.io/badge/audited-3_ways-5769f7?style=flat-square)
+
+</div>
+
+[Claude Code](https://claude.com/claude-code) 상태줄(statusline)에 AI 코딩 **사용 한도** — 정액제에서 진짜 신경 쓰이는 **5시간 / 주간** 한도 —를 색 막대로 보여주는 작은 도구입니다. **[Claude Code](https://claude.com/claude-code)와 [Codex](https://github.com/openai/codex)를 나란히** 추적하고, 컨텍스트 %·모델·세션 비용도 함께 표시합니다.
+
+**`bash` + `node`만 필요**(Claude Code가 이미 Node 사용) · **파일 하나** · **데몬 없음** · **네트워크 없음**.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
+```
+
+<sub>Claude Code statusline으로 설치되며, 추가로 Codex의 로컬 세션 데이터를 읽어 두 에이전트의 한도를 한 곳에 모아줍니다. 새 세션을 열면 보입니다.</sub>
 
 ---
 
@@ -16,7 +35,9 @@
 
 statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar는 **세 가지 독립 검증**을 거쳤어요 — 적대적 리뷰 에이전트, **OpenAI Codex**, 그리고 속도 주장은 [**Verdikt**](https://github.com/mangomandu/verdikt)(holdout 기반 A/B 심판)로.
 
-**렌더 1회당:**
+> **요약** — 평소 경로(캐시 적중)는 렌더당 **~6 ms / ~3.4 MB, Node를 아예 안 띄움** → `ccusage`보다 약 **5배 가벼움**. 데몬·타이머·소켓 없음. 세 검증 모두 익스플로잇 0개.
+
+### 렌더 1회당 — 상태줄 한 번 갱신
 
 | | quotabar — 캐시 적중 *(평소)* | quotabar — 캐시 미스 | `ccusage statusline` |
 |---|---|---|---|
@@ -29,7 +50,9 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 - 콜드 렌더는 짧게 도는 `node` 하나(그중 ~22 ms가 Node 자체 기동) — ccusage와 동급.
 - **데몬·타이머·소켓 없음.** 유휴 상태엔 진짜 아무것도 안 함 — 계속 폴링·애니메이션하는 상주 모니터(RunCat 등)와 반대.
 
-**다른 도구와 부하 비교** (기능이 아니라 *비용* 비교 — RunCat은 AI 사용량이 아니라 시스템 CPU 표시):
+### 다른 도구와 부하 비교
+
+기능이 아니라 *비용* 비교 — RunCat은 AI 사용량이 아니라 시스템 CPU 표시.
 
 | | quotabar | `ccusage` statusline | RunCat |
 |---|---|---|---|
@@ -40,7 +63,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 | 네트워크 | 없음 | 없음 | 없음 |
 | 상주 프로세스 | **없음** | 없음 | **항상 켜짐** |
 
-> **Verdikt 판결** (봉인 holdout, 페어 트라이얼, 부트스트랩 CI):
+> **Verdikt 판결** — 봉인 holdout, 페어 트라이얼, 부트스트랩 CI:
 > ```
 > ┌─ claim: quotabar(캐시 적중)가 ccusage보다 빠르다
 > │  on sealed holdout: 100%  (95% CI 100%–100%)
@@ -49,7 +72,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 > ```
 > 트라이얼 평균: **quotabar 5.4 ms vs ccusage 29.6 ms.**
 
-**보안** — 적대적 감사(+Codex), *익스플로잇 0개*:
+### 보안 — 적대적 감사(+Codex), 익스플로잇 0개
 
 - **명령 주입 불가.** conf 로더의 `eval`은 `[A-Za-z0-9_]`로 검증된 키만 보고, 값은 `export`에 리터럴 인자로만 전달(절대 eval 안 거침). `$(...)`·백틱·`;cmd`·중괄호 탈출 전부 무효.
 - **터미널 이스케이프 주입 불가.** 출력되는 모든 문자열(모델명·태그·Codex 파일경로·`Cx idle`·`│`·디버그)을 `clean()`이 C0/C1 제어바이트(`\x00–\x1f`, `\x7f–\x9f`)를 전부 제거. 악성 모델명·Codex 로그가 **ANSI/OSC 시퀀스(클립보드 탈취 OSC 52 등)를 터미널에 못 심음.**
@@ -78,12 +101,9 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 `ccusage` 같은 도구는 **달러 비용**을 보여줍니다. 그런데 정액제에서 발목 잡는 건 **한도 %**와 **언제 리셋되는지** — 이 데이터가 이제 statusline의 stdin으로 들어옵니다. quotabar는 바로 그걸 보여주고, **Codex까지 묶는 유일한** 도구.
 
-## 요구사항
-
-- `bash`, `node` (Claude Code가 이미 Node 사용)
-- Linux · macOS · WSL
-
 ## 설치
+
+`bash`, `node` 필요(Claude Code가 이미 Node 사용) · Linux · macOS · WSL.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
@@ -102,54 +122,67 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
    ```
 </details>
 
-## Claude Code만 쓰는 경우
+**Claude Code만 쓰는 경우.** 할 게 없습니다 — Codex 행은 기기에 Codex 세션 데이터가 있을 때만 렌더되니, 없으면 기본 상태에서 브랜드 색 Claude Code 두 줄(`5h`,`7d`)만 보입니다.
 
-할 게 없습니다. Codex 행은 기기에 Codex 세션 데이터가 있을 때만 렌더되니, 없으면 기본 상태에서 브랜드 색 Claude Code 두 줄(`5h`,`7d`)만 보입니다.
+---
 
 ## 커스터마이즈
 
 **파일 하나** `~/.claude/cc-usage.conf`만 고치면 됩니다(JSON X). `KEY=값` 한 줄씩, `#`는 주석. 저장 후 아무 메시지나 보내면 적용. 모든 키는 환경변수로도 가능(환경변수 우선).
 
-**무엇을/몇 줄로 — `CC_USAGE_SEGMENTS`**
+#### 무엇을 / 몇 줄로 — `CC_USAGE_SEGMENTS`
+
 `,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`, `model`, `cost`, `sep`(`│` 구분선).
+
 ```
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # 기본 — Claude Code 줄 + Codex 줄
 CC_USAGE_SEGMENTS=5h,7d              # Claude Code만
 ```
+
 **반응형:** `CC_USAGE_SEGMENTS_WIDE`(기본 `5h,7d,sep,cx5h,cx7d`)는 터미널이 `CC_USAGE_WIDE_AT`칸(배포 기본 150; 한 줄 ≈ 134칸) 이상이면 적용, 좁으면 `CC_USAGE_SEGMENTS`. 폭은 Claude Code가 주는 `COLUMNS`에서 읽어 추가 프로세스 없음.
 
-**라벨 & 색**
+#### 라벨 & 색
+
 머리말 = `[공급자 태그] [윈도우 태그]`, **모든 칸 교체 가능** — 아무 글자/이모지, 비우면 그 칸 생략:
+
 ```
 CC_USAGE_TAG_CC=CC   CC_USAGE_TAG_CX=Cx                  # 공급자 라벨
 CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
 # 이모지로:  TAG_CC=🟧  TAG_CX=🟦  TAG_5H=⏳  TAG_7D=📅
 ```
+
 **공급자** 태그에 색 — 글자나 `✿ ⬢ ● ◆` 같은 단색 기호에 적용(🟧 같은 컬러 이모지는 색 무시):
+
 ```
 CC_USAGE_TAGCOLOR_CC=claude   # 내장: claude 오렌지 #d77757
 CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
 ```
-색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)`. 우리가 쓴 두 브랜드 기본값:
+
+우리가 쓴 두 브랜드 기본값:
 
 | 태그 | 이름 | 값 | 정체 |
 |---|---|---|---|
-| `CC` | `claude` | `#d77757` | Claude 테라코타 오렌지(Claude Code 강조색) |
-| `Cx` | `codex`  | `#5769f7` | Codex 블루 — Claude Code가 "compacting" 때 쓰는 그 파랑 |
+| `CC` | `claude` | `#d77757` | Claude 테라코타 오렌지 |
+| `Cx` | `codex`  | `#5769f7` | Codex 블루 — Claude Code가 "compacting" 때 깜빡이는 그 파랑 |
 
-Codex 태그는 블루로 정하기 전 **보라**가 후보였음 — 원하면 `CC_USAGE_TAGCOLOR_CX=purple`(또는 `violet`). 그 외 내장 이름: `orange` `purple` `violet` `blue` `pink` `coral` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
+둘 다 **Claude Code / Codex 스크린샷에서 색을 직접 따와(eyedrop)** UI랑 정확히 맞춘 거예요. 정하기 전엔 **코랄**을 비롯해 스크린샷에서 딴 다른 색조 몇 개도 후보였고요. 색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)` — 그 외 내장: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
-**리셋 표시 — `CC_USAGE_RESET`**: `relative`(`4h00m`) · `clock`(`→18:40`) · `both`
+#### 나머지 전부
 
-**모양**: `CC_USAGE_BARS`(칸, 1–40) · `CC_USAGE_WARN`/`CC_USAGE_CRIT`(노랑/빨강 %) · `CC_USAGE_THRESHOLD=off`(막대 색 끔) · `CC_USAGE_STYLE=ascii`(막대 `#-`) · `NO_COLOR=1`
-
-**Codex 접기 — `CC_USAGE_STALE_MIN`**(기본 30): Codex가 N분 넘게 안 돌면 행을 `Cx idle`로 접음. `0`=항상 풀.
-
-**Codex 위치 — `CC_USAGE_CODEX_DIR`**(기본 `~/.codex/sessions`): Codex 세션 파일을 읽을 경로.
-
-**캐시 — `CC_USAGE_CACHE_TTL`**(기본 2): 세션별 출력 N초 재사용. `0`=항상 즉시 계산.
+| 키 | 하는 일 |
+|---|---|
+| `CC_USAGE_RESET` | `relative`(`4h00m`) · `clock`(`→18:40`) · `both` |
+| `CC_USAGE_BARS` | 막대 칸, 1–40 (기본 10) |
+| `CC_USAGE_WARN` / `CC_USAGE_CRIT` | 노랑 / 빨강 임계 % (기본 50 / 80) |
+| `CC_USAGE_THRESHOLD=off` | 막대 색 끔 |
+| `CC_USAGE_STYLE=ascii` | 막대를 `#-`로 · `NO_COLOR=1`은 색 끔 |
+| `CC_USAGE_STALE_MIN` | Codex가 N분 유휴면 `Cx idle`로 접음 (기본 30; `0`=항상 풀) |
+| `CC_USAGE_CODEX_DIR` | Codex 세션 읽을 경로 (기본 `~/.codex/sessions`) |
+| `CC_USAGE_CACHE_TTL` | 세션별 출력 N초 재사용 (기본 2; `0`=항상 즉시 계산) |
 
 주석 달린 템플릿은 [`cc-usage.conf`](./cc-usage.conf) 참고.
+
+---
 
 ## 작동 방식
 
@@ -157,9 +190,9 @@ Codex 태그는 블루로 정하기 전 **보라**가 후보였음 — 원하면
 
 ## 참고 / 한계
 
-- **Codex 신선도**: quotabar는 Codex 한도를 Codex 자체 세션 로그에서 읽음 → **마지막으로 Codex가 돈 시점 그대로**라 quotabar가 대신 갱신 못 함. `CC_USAGE_STALE_MIN`분(기본 30) 넘게 안 돌면 행이 `Cx idle`로 접혀 멈춘 숫자를 안 보게 됨. (임계 시점 근처에선 동시에 열린 두 세션이 잠깐 다르게 보일 수 있음.)
-- **반응형 지연**: statusline은 Claude Code가 다시 그릴 때(=활동) 재실행되지, 순수 터미널 resize엔 안 됨 — 그래서 창 크기 바꾼 뒤 **다음 동작** 때 레이아웃 전환. (계속 감시하려면 상주 데몬이 필요한데 의도적으로 피함.)
-- **기호 태그**: 태그에 이모지·기호를 넣으면 일부 터미널이 컬러 이모지로 강제 렌더해 지정 `TAGCOLOR`를 무시함. 내 색을 입히려면 단색 딩뱃(`✿ ⬢ ● ◆`), 고정색 글리프를 원하면 컬러 이모지(🟧 🟦).
+- **Codex 신선도** — quotabar는 Codex 한도를 Codex 자체 세션 로그에서 읽음 → **마지막으로 Codex가 돈 시점 그대로**라 quotabar가 대신 갱신 못 함. `CC_USAGE_STALE_MIN`분(기본 30) 넘게 안 돌면 행이 `Cx idle`로 접혀 멈춘 숫자를 안 보게 됨. (임계 시점 근처에선 동시에 열린 두 세션이 잠깐 다르게 보일 수 있음.)
+- **반응형 지연** — statusline은 Claude Code가 다시 그릴 때(=활동) 재실행되지, 순수 터미널 resize엔 안 됨 — 그래서 창 크기 바꾼 뒤 **다음 동작** 때 레이아웃 전환. (계속 감시하려면 상주 데몬이 필요한데 의도적으로 피함.)
+- **기호 태그** — 태그에 이모지·기호를 넣으면 일부 터미널이 컬러 이모지로 강제 렌더해 지정 `TAGCOLOR`를 무시함. 내 색을 입히려면 단색 딩뱃(`✿ ⬢ ● ◆`), 고정색 글리프를 원하면 컬러 이모지(🟧 🟦).
 
 ## 개발
 
