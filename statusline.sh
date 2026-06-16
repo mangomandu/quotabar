@@ -5,7 +5,7 @@
 #
 # 설정(환경변수, 모두 선택):
 #   CC_USAGE_SEGMENTS  표시 항목/배치. 기본 "5h,7d".
-#                      항목: 5h 7d ctx model cost  cx5h cx7d  (cx*=Codex)
+#                      항목: 5h 7d ctx model cost  cx5h cx7d  (cx*=Codex)  sep(구분선│)
 #                      "," = 같은 줄에 나란히,  ";" = 줄바꿈.
 #                      예) "5h,7d;cx5h,cx7d" → CC 한 줄, Codex 한 줄 (총 2줄)
 #   CC_USAGE_RESET     리셋 표시: relative(기본,"4h00m") | clock("→18:40") | both
@@ -202,6 +202,7 @@ const head=(s,showProv)=>{
   return "";
 };
 const render=(key,showProv)=>{
+  if(key==="sep"||key==="|")return C.DIM+"│"+C.R;   // 구분선(예: 같은 줄에서 CC│Cx)
   const s=SEG[key];if(!s)return null;
   if(s.prov==="cx"&&codexStale)return null;   // Codex 스테일 → 개별 막대 대신 collapse 토큰(아래)
   const o=s.get();

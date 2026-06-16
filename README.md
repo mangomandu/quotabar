@@ -64,7 +64,7 @@ CC_USAGE_SEGMENTS=5h,7d
 Edit **one file** — `~/.claude/cc-usage.conf` (no JSON). One `KEY=value` per line; `#` starts a comment. Save, then trigger any statusline refresh (type a message) to apply. Every key can also be set as an environment variable, which takes precedence.
 
 **What to show & layout — `CC_USAGE_SEGMENTS`**
-`,` puts items on the same line, `;` starts a new line. Items: `5h 7d` (Claude Code), `cx5h cx7d` (Codex), `ctx`, `model`, `cost`.
+`,` puts items on the same line, `;` starts a new line. Items: `5h 7d` (Claude Code), `cx5h cx7d` (Codex), `ctx`, `model`, `cost`, `sep` (a `│` divider).
 ```
 CC_USAGE_SEGMENTS=5h,7d              # default: Claude Code on one line
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code row + Codex row

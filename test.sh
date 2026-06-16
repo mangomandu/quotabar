@@ -68,6 +68,9 @@ node -e 'const fs=require("fs");const line=JSON.stringify({timestamp:new Date().
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=cx5h CC_USAGE_CODEX_DIR="$TMP/cxbig")
 has "Cx 5h" "$o" && ok "large Codex session (>256KB after) -> rate_limits still found" || bad "codex big file" "$o"
 
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h,sep,7d)
+has "│" "$o" && ok "sep -> divider │" || bad "sep divider" "$o"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]

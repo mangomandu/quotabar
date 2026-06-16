@@ -53,7 +53,7 @@ CC_USAGE_SEGMENTS=5h,7d
 **파일 하나**만 고치면 됩니다 — `~/.claude/cc-usage.conf` (JSON 편집 불필요). 한 줄에 `KEY=값`, `#`는 주석. 저장 후 아무 메시지나 보내면(statusline 갱신) 적용됩니다. 모든 키는 환경변수로도 줄 수 있고, 환경변수가 우선합니다.
 
 **무엇을 / 몇 줄로 — `CC_USAGE_SEGMENTS`**
-`,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`, `model`, `cost`.
+`,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`, `model`, `cost`, `sep`(구분선 `│`).
 ```
 CC_USAGE_SEGMENTS=5h,7d              # 기본: Claude Code 한 줄
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code 줄 + Codex 줄
