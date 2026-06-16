@@ -20,6 +20,7 @@
 #   CC_USAGE_BARS      막대 칸 수(기본 10)
 #   CC_USAGE_WARN      노랑 임계 %(기본 50)
 #   CC_USAGE_CRIT      빨강 임계 %(기본 80)
+#   CC_USAGE_THRESHOLD 막대/% 사용률색(초록/노랑/빨강) on(기본)|off. off여도 태그색은 유지
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
 #   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
@@ -132,7 +133,8 @@ const tag={
 
 const C=cfg.color?{R:"\x1b[0m",DIM:"\x1b[2m",B:"\x1b[1m",g:"\x1b[32m",y:"\x1b[33m",r:"\x1b[31m"}
                  :{R:"",DIM:"",B:"",g:"",y:"",r:""};
-const col=p=>p>=cfg.crit?C.r:p>=cfg.warn?C.y:C.g;
+const thresh=!/^(off|0|false|no)$/i.test(env.CC_USAGE_THRESHOLD||"on"); // 사용률색(초록/노랑/빨강) on|off
+const col=p=>thresh?(p>=cfg.crit?C.r:p>=cfg.warn?C.y:C.g):"";          // off면 무채색(태그색은 별개)
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,

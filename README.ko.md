@@ -73,7 +73,7 @@ CC_USAGE_TAGCOLOR_CX=codex     # 이름(claude/codex 내장)/256번호/#hex/rgb(
 
 **리셋 표시 — `CC_USAGE_RESET`**: `relative`(`4h00m`) · `clock`(`→18:40`) · `both`
 
-**모양**: `CC_USAGE_BARS`(칸 수) · `CC_USAGE_WARN`/`CC_USAGE_CRIT`(% 임계) · `CC_USAGE_STYLE=ascii`(막대를 `#-`로) · `NO_COLOR=1`
+**모양**: `CC_USAGE_BARS`(칸 수) · `CC_USAGE_WARN`/`CC_USAGE_CRIT`(% 임계) · `CC_USAGE_THRESHOLD=off`(막대/%를 초록/노랑/빨강 대신 한 색으로; 태그색은 유지) · `CC_USAGE_STYLE=ascii`(막대를 `#-`로) · `NO_COLOR=1`
 
 **성능/신선도**: `CC_USAGE_CACHE_TTL`(세션별 출력 재사용 초, 기본 `2`, `0`=비활성) · `CC_USAGE_STALE_MIN`(Codex가 N분 넘게 안 돌면 행을 `Cx idle` 한 토막으로 접어 CC 뒤에 붙임, 기본 `30`, `0`=끔)
 

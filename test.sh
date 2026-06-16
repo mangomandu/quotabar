@@ -55,6 +55,12 @@ has "Cx 5h" "$o" && ok "STALE_MIN=0 -> never collapses" || bad "stale off" "$o"
 e=$(printf '%s' "$CC" | run CC_USAGE_DEBUG=1 2>&1 >/dev/null)
 { has "[quotabar debug]" "$e" && has "rate_limits:" "$e"; } && ok "--debug dumps diagnostics to stderr" || bad "debug" "$e"
 
+GREEN=$'\033[32m'
+o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h bash "$SL")
+has "$GREEN" "$o" && ok "threshold on (default) -> green bar" || bad "threshold on" "$o"
+o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h CC_USAGE_THRESHOLD=off bash "$SL")
+{ ! has "$GREEN" "$o"; } && ok "threshold=off -> no level color" || bad "threshold off" "$o"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]

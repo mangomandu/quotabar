@@ -84,7 +84,7 @@ CC_USAGE_TAGCOLOR_CX=codex     # name (claude/codex built in), 256-index, #hex, 
 
 **Reset display — `CC_USAGE_RESET`**: `relative` (`4h00m`) · `clock` (`→18:40`) · `both`
 
-**Appearance**: `CC_USAGE_BARS` (cells) · `CC_USAGE_WARN`/`CC_USAGE_CRIT` (% thresholds) · `CC_USAGE_STYLE=ascii` (bars as `#-`) · `NO_COLOR=1`
+**Appearance**: `CC_USAGE_BARS` (cells) · `CC_USAGE_WARN`/`CC_USAGE_CRIT` (% thresholds) · `CC_USAGE_THRESHOLD=off` (bars/% one color instead of green/yellow/red; tag colors stay) · `CC_USAGE_STYLE=ascii` (bars as `#-`) · `NO_COLOR=1`
 
 **Performance / freshness**: `CC_USAGE_CACHE_TTL` (reuse output for N seconds per session, default `2`, `0` to disable) · `CC_USAGE_STALE_MIN` (when Codex hasn't run in N minutes, collapse its rows into a compact `Cx idle` tag after Claude Code; default `30`, `0` to disable)
 
