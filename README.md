@@ -29,6 +29,17 @@ This is the part that matters: a statusline runs on *every* render, so it has to
 - A cold render is a single short-lived `node` (~22 ms of which is Node's own startup) — on par with ccusage.
 - **No daemon, no timer, no sockets.** It does literally nothing when you're idle — unlike always-on monitors (e.g. RunCat) that poll and animate continuously.
 
+**Footprint vs other tools** (this compares *cost*, not features — RunCat shows system CPU, not AI usage):
+
+| | quotabar | `ccusage` statusline | RunCat |
+|---|---|---|---|
+| type | statusline — runs per render | statusline — runs per render | **persistent menu-bar app** |
+| when you're idle | **nothing runs** | nothing runs | runs continuously (polls + animates) |
+| per update | **~5 ms** *(cache hit)* · ~32 ms cold | ~32 ms | continuous low CPU |
+| memory | transient, freed (3.4–45 MB) | transient, freed (~48 MB) | **resident the whole time** |
+| network | none | none | none |
+| background process | **none** | none | **always-on daemon** |
+
 > **Verdikt verdict** (sealed holdout, paired trials, bootstrap CI):
 > ```
 > ┌─ claim: quotabar (cache hit) renders faster than ccusage
