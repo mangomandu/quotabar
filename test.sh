@@ -84,6 +84,14 @@ has "│" "$o" && ok "wide terminal -> WIDE layout" || bad "responsive wide" "$o
 o=$(printf '%s' "$CC" | run COLUMNS=80 CC_USAGE_SEGMENTS=5h CC_USAGE_SEGMENTS_WIDE=5h,sep,7d CC_USAGE_WIDE_AT=120)
 { ! has "│" "$o"; } && ok "narrow terminal -> base layout" || bad "responsive narrow" "$o"
 
+# empty output must NOT be cached: first-session (no rate_limits) then data arrives
+# within TTL -> bars show immediately, not a cached blank held for TTL seconds.
+CDIR="$TMP/cache"; rm -rf "$CDIR"
+crun(){ env XDG_CACHE_HOME="$CDIR" CC_USAGE_CACHE_TTL=5 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 bash "$SL"; }
+printf '%s' '{"session_id":"q"}' | crun >/dev/null
+o=$(printf '%s' '{"session_id":"q","rate_limits":{"five_hour":{"used_percentage":12,"resets_at":'$FUT'}}}' | crun)
+has "12%" "$o" && ok "empty output not cached -> normalizes instantly within TTL" || bad "empty cached" "$o"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]

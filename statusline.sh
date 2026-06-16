@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.0.1 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.0.2 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -266,7 +266,8 @@ if(env.CC_USAGE_DEBUG){
 process.stdout.write(lines.join("\n"));
 ')
 printf '%s' "$out"
-# 캐시 갱신(실패해도 무시)
-if [ "$ttl" -gt 0 ]; then
+# 캐시 갱신(실패해도 무시). 빈 출력은 캐시 안 함: 첫 세션(rate_limits 도착 전)의
+# 빈 결과가 TTL 동안 물려 정상화를 지연시키는 걸 막음 → 첫 메시지 직후 즉시 바 표시.
+if [ "$ttl" -gt 0 ] && [ -n "$out" ]; then
   mkdir -p "$cache_dir" 2>/dev/null && { printf '%s' "$out" > "$cache.o" && date +%s > "$cache.t"; } 2>/dev/null
 fi

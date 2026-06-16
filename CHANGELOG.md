@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.2
+
+**Fixed**
+- Empty output is no longer cached. A first-session blank (before `rate_limits`
+  arrives) used to be held for the cache TTL, delaying the bars by up to ~2s after
+  the first message. Now blanks skip the cache, so the statusline normalizes the
+  instant data arrives. (Builds on the v1.0.1 lonely-`Cx idle` fix.)
+
+**Quality**
+- Adversarial pass: ANSI/control-char injection (model/cost/tag), session-id path
+  traversal, and config `eval` injection all confirmed blocked; malformed/empty
+  JSON and out-of-range inputs degrade without crashing. Test suite at 21 assertions.
+
 ## v1.0.1
 
 **Fixed**
@@ -36,5 +49,5 @@ coding **usage limits**, audited for security and per-render cost.
 - Symlink-safe Codex walk, sanitized cache paths, bounded reads / regexes / bar width / percent.
 
 **Quality**
-- 20-assertion test suite (`test.sh`); `CC_USAGE_DEBUG` / `--debug` diagnostics.
+- 18-assertion test suite (`test.sh`); `CC_USAGE_DEBUG` / `--debug` diagnostics.
 - Audited three independent ways: an adversarial review agent, OpenAI Codex, and Verdikt.
