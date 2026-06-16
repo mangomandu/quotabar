@@ -88,9 +88,7 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
 ![stale](./assets/stale.png)
 
-**Bar colors** — bars stay neutral below 50%, turn yellow at 50–80%, and red at 80%+. The three shots above are real usage (which lands neutral/red); the one below uses **example values** so all three show at once:
-
-![bar colors — example values](./assets/colors.png)
+**Bar colors** — bars stay neutral below 50%, turn yellow at 50–80%, and red at 80%+. All three are visible in the **Default** shot above: Codex's `5h` (1%) and `7d` (24%) are neutral, Claude Code's `5h` (57%) is yellow, and its `7d` (96%) is red.
 
 ---
 
