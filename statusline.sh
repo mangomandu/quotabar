@@ -137,7 +137,7 @@ const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
   orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,coral:209,
-  claude:"#d77757",codex:"#293fe0"};   // claude=Claude 오렌지, codex=Codex 브랜드 블루
+  claude:"#d77757",codex:"#5769f7"};   // claude=Claude 오렌지, codex=Codex 블루(밝은 쪽, 다크 가독성)
 const tcol=spec=>{
   if(!cfg.color||!spec)return"";
   let s=String(spec).trim().toLowerCase();
