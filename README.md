@@ -156,7 +156,7 @@ The two brand defaults:
 | `CC` | `claude` | `#d77757` | Claude's terracotta orange |
 | `Cx` | `codex`  | `#5769f7` | Codex blue — the blue Claude Code flashes while "compacting" |
 
-Before settling on these we weighed two candidates — a blue **eyedropped from a screenshot of the Codex homepage**, and **Claude's coral**. Colors accept a built-in name, a 256-index, `#hex`, or `rgb(r,g,b)` — other built-ins: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
+Before settling on these we weighed two candidates — a blue **eyedropped from a screenshot of the Codex homepage** (`#293fe0`), and **Claude's coral** (`#ff875f`). Colors accept a built-in name, a 256-index, `#hex`, or `rgb(r,g,b)` — other built-ins: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 #### Everything else
 

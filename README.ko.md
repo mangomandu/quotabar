@@ -156,7 +156,7 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
 | `CC` | `claude` | `#d77757` | Claude 테라코타 오렌지 |
 | `Cx` | `codex`  | `#5769f7` | Codex 블루 — Claude Code가 "compacting" 때 깜빡이는 그 파랑 |
 
-이걸로 정하기 전엔 후보가 둘 있었어요 — **Codex 홈페이지 스크린샷에서 따온 파랑**, 그리고 **클로드 코랄**. 색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)` — 그 외 내장: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
+이걸로 정하기 전엔 후보가 둘 있었어요 — **Codex 홈페이지 스크린샷에서 따온 파랑** (`#293fe0`), 그리고 **클로드 코랄** (`#ff875f`). 색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)` — 그 외 내장: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 #### 나머지 전부
 
