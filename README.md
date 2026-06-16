@@ -72,7 +72,7 @@ This is the part that matters: a statusline runs on *every* render, so it has to
 
 ![wide](./assets/wide.png)
 
-**Codex idle a while → its row collapses** to a compact `Cx idle` tag after Claude Code:
+**Codex idle past `CC_USAGE_STALE_MIN` min → its rows collapse** to a compact `Cx idle` tag after Claude Code:
 
 ![stale](./assets/stale.png)
 
@@ -123,10 +123,16 @@ CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code row + Codex row
 **Responsive:** set `CC_USAGE_SEGMENTS_WIDE` (e.g. `5h,7d,sep,cx5h,cx7d`) to use a wider layout when the terminal is at least `CC_USAGE_WIDE_AT` columns (default 120), else `CC_USAGE_SEGMENTS`. Width comes from the `COLUMNS` env Claude Code provides — no extra process.
 
 **Labels & colors**
-Head = `[provider tag] [window tag]`. Defaults are plain text; put any text or emoji, and color the tag (text or a monochrome symbol like `✿ ⬢ ● ◆`):
+The head is `[provider tag] [window tag]`, and **every slot is replaceable** — any text or emoji, or empty to omit it:
 ```
-CC_USAGE_TAG_CC=CC          CC_USAGE_TAGCOLOR_CC=claude   # built-in: claude orange #d77757
-CC_USAGE_TAG_CX=Cx          CC_USAGE_TAGCOLOR_CX=codex    # built-in: codex blue #5769f7
+CC_USAGE_TAG_CC=CC   CC_USAGE_TAG_CX=Cx                  # provider labels
+CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
+# emoji instead:  TAG_CC=🟧  TAG_CX=🟦  TAG_5H=⏳  TAG_7D=📅
+```
+Color the **provider** tag — applies to text or a monochrome symbol like `✿ ⬢ ● ◆` (color emoji such as 🟧 ignore it):
+```
+CC_USAGE_TAGCOLOR_CC=claude   # built-in: claude orange #d77757
+CC_USAGE_TAGCOLOR_CX=codex    # built-in: codex blue   #5769f7
 ```
 Colors accept a name (`claude`, `codex`, `orange`, `purple`, …), a 256-index, `#hex`, or `rgb(r,g,b)`.
 
@@ -135,6 +141,8 @@ Colors accept a name (`claude`, `codex`, `orange`, `purple`, …), a 256-index, 
 **Appearance**: `CC_USAGE_BARS` (cells, 1–40) · `CC_USAGE_WARN`/`CC_USAGE_CRIT` (yellow/red %) · `CC_USAGE_THRESHOLD=off` (never color bars) · `CC_USAGE_STYLE=ascii` (bars as `#-`) · `NO_COLOR=1`
 
 **Codex collapse — `CC_USAGE_STALE_MIN`** (default 30): if Codex hasn't run in N minutes, its rows collapse to a compact `Cx idle` tag. `0` = always show full rows.
+
+**Codex source — `CC_USAGE_CODEX_DIR`** (default `~/.codex/sessions`): where to look for Codex session files.
 
 **Cache — `CC_USAGE_CACHE_TTL`** (default 2): reuse output for N seconds per session. `0` = always recompute.
 
@@ -146,7 +154,7 @@ On each render Claude Code pipes a JSON blob to the command. quotabar reads `rat
 
 ## Notes & limitations
 
-- **Codex freshness**: Codex values reflect the last time Codex ran (that's when it writes them); quotabar can't refresh them itself. When it hasn't run in `CC_USAGE_STALE_MIN` minutes its row collapses to `Cx idle`.
+- **Codex freshness**: quotabar reads Codex's limits from Codex's own session log, so they're exactly as current as the last time Codex ran — it can't refresh them on its own. Once Codex has been idle past `CC_USAGE_STALE_MIN` minutes (default 30) the rows collapse to `Cx idle`, so you're not staring at frozen numbers. (Two open sessions can briefly disagree right as Codex crosses that threshold.)
 - **Responsive lag**: the statusline re-runs when Claude Code re-renders (on activity), not on a bare terminal resize — so after resizing, the layout switches on your next action. (Watching the terminal continuously would require a persistent daemon, which this deliberately avoids.)
 - **Terminal glyphs**: some terminals force emoji presentation on symbols like ☁ (ignoring color). Use plain dingbats (`✿ ⬢ ● ◆`) for reliable custom colors, or colored emoji (🟧 🟦).
 

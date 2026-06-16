@@ -72,7 +72,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ![wide](./assets/wide.png)
 
-**Codex가 한동안 idle → 행이 접힘** (CC 뒤에 `Cx idle` 한 토막):
+**Codex가 `CC_USAGE_STALE_MIN`분 넘게 idle → 행이 접힘** (CC 뒤에 `Cx idle` 한 토막):
 
 ![stale](./assets/stale.png)
 
@@ -123,10 +123,16 @@ CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code 줄 + Codex 줄
 **반응형:** `CC_USAGE_SEGMENTS_WIDE`(예: `5h,7d,sep,cx5h,cx7d`)를 지정하면 터미널이 `CC_USAGE_WIDE_AT`칸(기본 120) 이상일 때 그 배치, 좁으면 `CC_USAGE_SEGMENTS`. 폭은 Claude Code가 주는 `COLUMNS`에서 읽어 추가 프로세스 없음.
 
 **라벨 & 색**
-머리말 = `[공급자 태그] [윈도우 태그]`. 기본은 글자, 아무 글자/이모지로 교체 + 태그에 색(글자나 `✿ ⬢ ● ◆` 같은 단색 기호):
+머리말 = `[공급자 태그] [윈도우 태그]`, **모든 칸 교체 가능** — 아무 글자/이모지, 비우면 그 칸 생략:
 ```
-CC_USAGE_TAG_CC=CC          CC_USAGE_TAGCOLOR_CC=claude   # 내장: claude 오렌지 #d77757
-CC_USAGE_TAG_CX=Cx          CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루 #5769f7
+CC_USAGE_TAG_CC=CC   CC_USAGE_TAG_CX=Cx                  # 공급자 라벨
+CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
+# 이모지로:  TAG_CC=🟧  TAG_CX=🟦  TAG_5H=⏳  TAG_7D=📅
+```
+**공급자** 태그에 색 — 글자나 `✿ ⬢ ● ◆` 같은 단색 기호에 적용(🟧 같은 컬러 이모지는 색 무시):
+```
+CC_USAGE_TAGCOLOR_CC=claude   # 내장: claude 오렌지 #d77757
+CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
 ```
 색은 이름(`claude`,`codex`,`orange`,`purple`…)/256번호/`#hex`/`rgb(r,g,b)` 다 됨.
 
@@ -135,6 +141,8 @@ CC_USAGE_TAG_CX=Cx          CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루
 **모양**: `CC_USAGE_BARS`(칸, 1–40) · `CC_USAGE_WARN`/`CC_USAGE_CRIT`(노랑/빨강 %) · `CC_USAGE_THRESHOLD=off`(막대 색 끔) · `CC_USAGE_STYLE=ascii`(막대 `#-`) · `NO_COLOR=1`
 
 **Codex 접기 — `CC_USAGE_STALE_MIN`**(기본 30): Codex가 N분 넘게 안 돌면 행을 `Cx idle`로 접음. `0`=항상 풀.
+
+**Codex 위치 — `CC_USAGE_CODEX_DIR`**(기본 `~/.codex/sessions`): Codex 세션 파일을 읽을 경로.
 
 **캐시 — `CC_USAGE_CACHE_TTL`**(기본 2): 세션별 출력 N초 재사용. `0`=항상 즉시 계산.
 
@@ -146,7 +154,7 @@ CC_USAGE_TAG_CX=Cx          CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루
 
 ## 참고 / 한계
 
-- **Codex 신선도**: Codex 값은 마지막 실행 시점 기준(그때 기록); quotabar가 대신 갱신 못 함. `CC_USAGE_STALE_MIN`분 넘게 안 돌면 `Cx idle`로 접힘.
+- **Codex 신선도**: quotabar는 Codex 한도를 Codex 자체 세션 로그에서 읽음 → **마지막으로 Codex가 돈 시점 그대로**라 quotabar가 대신 갱신 못 함. `CC_USAGE_STALE_MIN`분(기본 30) 넘게 안 돌면 행이 `Cx idle`로 접혀 멈춘 숫자를 안 보게 됨. (임계 시점 근처에선 동시에 열린 두 세션이 잠깐 다르게 보일 수 있음.)
 - **반응형 지연**: statusline은 Claude Code가 다시 그릴 때(=활동) 재실행되지, 순수 터미널 resize엔 안 됨 — 그래서 창 크기 바꾼 뒤 **다음 동작** 때 레이아웃 전환. (계속 감시하려면 상주 데몬이 필요한데 의도적으로 피함.)
 - **터미널 글리프**: 일부 터미널은 ☁ 같은 기호를 컬러 이모지로 강제(색 무시). 색 확실히 원하면 단색 딩뱃(`✿ ⬢ ● ◆`)이나 컬러 이모지(🟧 🟦) 사용.
 
