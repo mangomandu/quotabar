@@ -14,7 +14,7 @@
 #   CC_USAGE_TAG_5H    "5h" 자리 라벨(기본 "5h").                    (예: ⏳)
 #   CC_USAGE_TAG_7D    "7d" 자리 라벨(기본 "7d").                    (예: 📅)
 #   CC_USAGE_TAG_CTX   "ctx" 자리 라벨(기본 "ctx").                  (예: 🧠)
-#   CC_USAGE_TAGCOLOR_CC  CC 태그 색: 이름(orange,purple,red…) 또는 256색번호. 단색기호(✿☁)에만 효과
+#   CC_USAGE_TAGCOLOR_CC  CC 태그 색: 이름/256번호/#hex/rgb(). 글자·단색기호에 적용(컬러 이모지는 무시)
 #   CC_USAGE_TAGCOLOR_CX  Cx 태그 색
 #   CC_USAGE_STYLE     unicode(기본) | ascii   (막대를 #,- 로: 옛 터미널용)
 #   CC_USAGE_BARS      막대 칸 수(기본 10)
@@ -140,8 +140,12 @@ const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,whi
   coral:209,codex:36};   // coral≈#ff875f, codex=OpenAI green≈#10a37f
 const tcol=spec=>{
   if(!cfg.color||!spec)return"";
-  const n=/^\d+$/.test(spec)?parseInt(spec,10):NAMED[String(spec).toLowerCase()];
-  return (n==null||isNaN(n))?"":`\x1b[38;5;${n}m`;
+  const s=String(spec).trim().toLowerCase();
+  let m;
+  if(m=s.match(/^#?([0-9a-f]{6})$/))return `\x1b[38;2;${parseInt(m[1].slice(0,2),16)};${parseInt(m[1].slice(2,4),16)};${parseInt(m[1].slice(4,6),16)}m`; // #hex → truecolor
+  if(m=s.match(/^rgb\((\d+),(\d+),(\d+)\)$/))return `\x1b[38;2;${m[1]};${m[2]};${m[3]}m`;     // rgb(r,g,b) → truecolor
+  const n=/^\d+$/.test(s)?parseInt(s,10):NAMED[s];
+  return (n==null||isNaN(n))?"":`\x1b[38;5;${n}m`;                                            // 256색 번호 또는 이름
 };
 const provColor={cc:tcol(env.CC_USAGE_TAGCOLOR_CC),cx:tcol(env.CC_USAGE_TAGCOLOR_CX)};
 
