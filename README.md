@@ -74,7 +74,7 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
 ## What it looks like
 
-**Default** — Claude Code and Codex side by side, brand-colored (Claude orange / Codex blue), two rows. Bars stay neutral, go **yellow past 50%** and **red past 80%**; the `%` is always white:
+**Default** — Claude Code and Codex side by side, brand-colored (Claude terra cotta / Codex blue), two rows. Bars stay neutral, go **yellow past 50%** and **red past 80%**; the `%` is always white:
 
 ![demo](./assets/demo.png)
 
@@ -145,18 +145,18 @@ CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
 Color the **provider** tag — applies to text or a monochrome symbol like `✿ ⬢ ● ◆` (color emoji such as 🟧 ignore it):
 
 ```
-CC_USAGE_TAGCOLOR_CC=claude   # built-in: claude orange #d77757
-CC_USAGE_TAGCOLOR_CX=codex    # built-in: codex blue   #5769f7
+CC_USAGE_TAGCOLOR_CC=claude   # built-in: Anthropic terra cotta #da7756
+CC_USAGE_TAGCOLOR_CX=codex    # built-in: Claude Code compacting blue #5769f7
 ```
 
 The two brand defaults:
 
 | tag | name | value | what it is |
 |---|---|---|---|
-| `CC` | `claude` | `#d77757` | Claude's terracotta orange |
-| `Cx` | `codex`  | `#5769f7` | Codex blue — the blue Claude Code flashes while "compacting" |
+| `CC` | `claude` | `#da7756` | Anthropic's official **terra cotta** brand color |
+| `Cx` | `codex`  | `#5769f7` | Claude Code's **"compacting" blue** — OpenAI Codex has no official brand color, so we borrow this |
 
-Before settling on these we weighed two candidates — a blue **eyedropped from a screenshot of the Codex homepage** (`#293fe0`), and **Claude's coral** (`#ff875f`). Colors accept a built-in name, a 256-index, `#hex`, or `rgb(r,g,b)` — other built-ins: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
+Before settling we weighed two screenshot-sampled candidates — a blue **eyedropped from the Codex homepage** (`#293fe0`) and a **coral** (`#ff875f`, near CSS `coral`). Colors accept a built-in name, a 256-index, `#hex`, or `rgb(r,g,b)` — other built-ins: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 #### Everything else
 

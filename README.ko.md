@@ -74,7 +74,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ## 화면 모습
 
-**기본** — Claude Code와 Codex를 나란히, 브랜드 색(Claude 오렌지 / Codex 블루), 두 줄. 막대는 무채색이다가 **50%↑ 노랑**, **80%↑ 빨강**; `%`는 항상 흰색:
+**기본** — Claude Code와 Codex를 나란히, 브랜드 색(Claude 테라코타 / Codex 블루), 두 줄. 막대는 무채색이다가 **50%↑ 노랑**, **80%↑ 빨강**; `%`는 항상 흰색:
 
 ![demo](./assets/demo.png)
 
@@ -145,18 +145,18 @@ CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
 **공급자** 태그에 색 — 글자나 `✿ ⬢ ● ◆` 같은 단색 기호에 적용(🟧 같은 컬러 이모지는 색 무시):
 
 ```
-CC_USAGE_TAGCOLOR_CC=claude   # 내장: claude 오렌지 #d77757
-CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
+CC_USAGE_TAGCOLOR_CC=claude   # 내장: Anthropic 테라코타 #da7756
+CC_USAGE_TAGCOLOR_CX=codex    # 내장: Claude Code 컴팩팅 블루 #5769f7
 ```
 
 우리가 쓴 두 브랜드 기본값:
 
 | 태그 | 이름 | 값 | 정체 |
 |---|---|---|---|
-| `CC` | `claude` | `#d77757` | Claude 테라코타 오렌지 |
-| `Cx` | `codex`  | `#5769f7` | Codex 블루 — Claude Code가 "compacting" 때 깜빡이는 그 파랑 |
+| `CC` | `claude` | `#da7756` | Anthropic 공식 **테라코타** 브랜드 색 |
+| `Cx` | `codex`  | `#5769f7` | Claude Code의 **"compacting" 블루** — Codex는 공식 브랜드 색이 없어 이걸 차용 |
 
-이걸로 정하기 전엔 후보가 둘 있었어요 — **Codex 홈페이지 스크린샷에서 따온 파랑** (`#293fe0`), 그리고 **클로드 코랄** (`#ff875f`). 색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)` — 그 외 내장: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
+정하기 전엔 스크린샷에서 딴 후보가 둘 있었어요 — **Codex 홈페이지에서 따온 파랑** (`#293fe0`), 그리고 **코랄** (`#ff875f`, CSS `coral` 근처). 색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)` — 그 외 내장: `coral` `orange` `purple` `violet` `blue` `pink` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 #### 나머지 전부
 
