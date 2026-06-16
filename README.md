@@ -147,12 +147,38 @@ Edit **one file** — `~/.claude/cc-usage.conf` (no JSON). One `KEY=value` per l
 
 #### What to show & layout — `CC_USAGE_SEGMENTS`
 
-`,` puts items on the same line, `;` starts a new line. Items: `5h 7d` (Claude Code), `cx5h cx7d` (Codex), `ctx` (context tokens as a `544k/1M` fraction), `effort` (reasoning-effort level), `model`, `cost`, `sep` (a `│` divider).
+Each name is one segment. `,` puts them on the same line, `;` starts a new line. Mix freely.
+
+| segment | shows |
+|---|---|
+| `5h` / `7d` | Claude Code 5-hour / weekly usage — bar + % + reset countdown |
+| `cx5h` / `cx7d` | Codex 5-hour / weekly (read from local Codex session files) |
+| `ctx` | context window as a token fraction, e.g. `544k/1M` |
+| `effort` | reasoning-effort level, e.g. `max effort` (the word `max` turns purple at max) |
+| `model` | model name, e.g. `Opus 4.8 (1M context)` |
+| `cost` | session cost, e.g. `$1.42` |
+| `sep` | a `│` divider |
 
 ```
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # default — Claude Code row + Codex row
 CC_USAGE_SEGMENTS=5h,7d              # Claude Code only
 ```
+
+**Add model / effort / context** — just list them (give them their own row, or append to one):
+
+```
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;model,effort,ctx   # adds a 3rd row: model · effort · tokens
+CC_USAGE_SEGMENTS=5h,7d,model,effort,ctx             # everything on one line
+```
+
+**Remove** any segment — just delete its name from the list:
+
+```
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;model              # keep model, drop effort & ctx
+CC_USAGE_SEGMENTS=ctx,model                          # only tokens + model
+```
+
+Every segment is independent — show exactly what you want, in any order, on any line. (To drop the `ctx` label and keep just the fraction, set `CC_USAGE_TAG_CTX=` empty; see below.)
 
 **Responsive:** `CC_USAGE_SEGMENTS_WIDE` (default `5h,7d,sep,cx5h,cx7d`) kicks in when the terminal is at least `CC_USAGE_WIDE_AT` columns (shipped default 150; the one-line layout is ≈ 134 cols), else `CC_USAGE_SEGMENTS`. Width comes from the `COLUMNS` env Claude Code provides — no extra process.
 

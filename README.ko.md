@@ -147,12 +147,38 @@ wget -qO- https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh 
 
 #### 무엇을 / 몇 줄로 — `CC_USAGE_SEGMENTS`
 
-`,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`(컨텍스트 토큰 `544k/1M` 분수), `effort`(추론 강도), `model`, `cost`, `sep`(`│` 구분선).
+이름 하나가 세그먼트 하나. `,`=같은 줄, `;`=줄바꿈. 자유롭게 섞어:
+
+| 세그먼트 | 표시 |
+|---|---|
+| `5h` / `7d` | Claude Code 5시간 / 주간 사용량 — 막대 + % + 리셋 카운트다운 |
+| `cx5h` / `cx7d` | Codex 5시간 / 주간 (로컬 Codex 세션 파일에서 읽음) |
+| `ctx` | 컨텍스트 윈도우를 토큰 분수로, 예: `544k/1M` |
+| `effort` | 추론 강도, 예: `max effort` (max일 때 `max` 글자 보라) |
+| `model` | 모델명, 예: `Opus 4.8 (1M context)` |
+| `cost` | 세션 비용, 예: `$1.42` |
+| `sep` | `│` 구분선 |
 
 ```
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # 기본 — Claude Code 줄 + Codex 줄
 CC_USAGE_SEGMENTS=5h,7d              # Claude Code만
 ```
+
+**model / effort / context 넣기** — 이름만 나열(별도 줄로 두거나 한 줄에 붙이거나):
+
+```
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;model,effort,ctx   # 3번째 줄 추가: 모델 · effort · 토큰
+CC_USAGE_SEGMENTS=5h,7d,model,effort,ctx             # 전부 한 줄
+```
+
+**빼기** — 목록에서 이름만 지우면 됨:
+
+```
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;model              # model만 두고 effort·ctx 제거
+CC_USAGE_SEGMENTS=ctx,model                          # 토큰 + 모델만
+```
+
+각 세그먼트는 독립 — 원하는 것만, 원하는 순서·줄에 배치. (`ctx` 분수에서 "ctx" 라벨 빼려면 `CC_USAGE_TAG_CTX=`를 빈 값으로 — 아래 참고.)
 
 **반응형:** `CC_USAGE_SEGMENTS_WIDE`(기본 `5h,7d,sep,cx5h,cx7d`)는 터미널이 `CC_USAGE_WIDE_AT`칸(배포 기본 150; 한 줄 ≈ 134칸) 이상이면 적용, 좁으면 `CC_USAGE_SEGMENTS`. 폭은 Claude Code가 주는 `COLUMNS`에서 읽어 추가 프로세스 없음.
 
