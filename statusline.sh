@@ -136,16 +136,17 @@ const col=p=>p>=cfg.crit?C.r:p>=cfg.warn?C.y:C.g;
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
-  orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,
-  coral:209,codex:36};   // coral≈#ff875f, codex=OpenAI green≈#10a37f
+  orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,coral:209,
+  claude:"#d77757",codex:"#293fe0"};   // claude=Claude 오렌지, codex=Codex 브랜드 블루
 const tcol=spec=>{
   if(!cfg.color||!spec)return"";
-  const s=String(spec).trim().toLowerCase();
+  let s=String(spec).trim().toLowerCase();
+  if(NAMED[s]!=null)s=String(NAMED[s]);    // 이름 → 정의값(hex 또는 번호)으로 치환 후 재해석
   let m;
   if(m=s.match(/^#?([0-9a-f]{6})$/))return `\x1b[38;2;${parseInt(m[1].slice(0,2),16)};${parseInt(m[1].slice(2,4),16)};${parseInt(m[1].slice(4,6),16)}m`; // #hex → truecolor
   if(m=s.match(/^rgb\((\d+),(\d+),(\d+)\)$/))return `\x1b[38;2;${m[1]};${m[2]};${m[3]}m`;     // rgb(r,g,b) → truecolor
-  const n=/^\d+$/.test(s)?parseInt(s,10):NAMED[s];
-  return (n==null||isNaN(n))?"":`\x1b[38;5;${n}m`;                                            // 256색 번호 또는 이름
+  if(/^\d+$/.test(s))return `\x1b[38;5;${s}m`;                                                // 256색 번호
+  return "";
 };
 const provColor={cc:tcol(env.CC_USAGE_TAGCOLOR_CC),cx:tcol(env.CC_USAGE_TAGCOLOR_CX)};
 

@@ -67,8 +67,8 @@ CC_USAGE_TAG_CC=✿        # "CC" 자리   (기본: CC)
 CC_USAGE_TAG_CX=❖        # "Cx" 자리   (기본: Cx)
 CC_USAGE_TAG_5H=⏳        # "5h" 자리   (기본: 5h)
 CC_USAGE_TAG_7D=📅        # "7d" 자리   (기본: 7d)
-CC_USAGE_TAGCOLOR_CC=coral     # 공급자 태그(글자 또는 기호 ✿ ❖ ● ◆ …)에 색
-CC_USAGE_TAGCOLOR_CX=#5769f7   # 이름/256번호/#hex/rgb() ; 🟧 같은 컬러 이모지는 무시
+CC_USAGE_TAGCOLOR_CC=claude    # 공급자 태그(글자 또는 기호 ✿ ❖ ● ◆ …)에 색
+CC_USAGE_TAGCOLOR_CX=codex     # 이름(claude/codex 내장)/256번호/#hex/rgb() ; 🟧 컬러 이모지는 무시
 ```
 
 **리셋 표시 — `CC_USAGE_RESET`**: `relative`(`4h00m`) · `clock`(`→18:40`) · `both`

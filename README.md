@@ -78,8 +78,8 @@ CC_USAGE_TAG_CC=✿        # "CC" slot   (default: CC)
 CC_USAGE_TAG_CX=⬢        # "Cx" slot   (default: Cx)
 CC_USAGE_TAG_5H=⏳        # "5h" slot   (default: 5h)
 CC_USAGE_TAG_7D=📅        # "7d" slot   (default: 7d)
-CC_USAGE_TAGCOLOR_CC=coral     # colors the provider tag (text or symbol ✿ ⬢ ● ◆ …)
-CC_USAGE_TAGCOLOR_CX=#5769f7   # name, 256-index, #hex, or rgb(); color emoji (🟧) ignore it
+CC_USAGE_TAGCOLOR_CC=claude    # colors the provider tag (text or symbol ✿ ⬢ ● ◆ …)
+CC_USAGE_TAGCOLOR_CX=codex     # name (claude/codex built in), 256-index, #hex, or rgb(); emoji (🟧) ignore it
 ```
 
 **Reset display — `CC_USAGE_RESET`**: `relative` (`4h00m`) · `clock` (`→18:40`) · `both`
