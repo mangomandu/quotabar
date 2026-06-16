@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.0.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.0.1 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -242,7 +242,10 @@ let lines=cfg.rows.map(row=>{
 if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
   const cxt=tag.cx||"Cx";
   const tok=(provColor.cx?provColor.cx+cxt+C.R:C.DIM+cxt+C.R)+C.DIM+" idle"+C.R;  // 공급자색 유지 + idle은 흐리게
-  if(lines.length)lines[0]+="   "+tok; else lines=[tok];
+  // CC 줄이 있으면 뒤에 붙임. CC 세그먼트(5h/7d)가 아예 없는 Codex 전용 설정이면 단독 표시.
+  // CC가 설정됐는데도 비어 있으면(첫 세션: rate_limits 아직 없음) 외로운 "Cx idle" 대신 숨김 → 첫 입력 시 정상화.
+  if(lines.length)lines[0]+="   "+tok;
+  else if(!cfg.rows.some(r=>r.includes("5h")||r.includes("7d")))lines=[tok];
 }
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프

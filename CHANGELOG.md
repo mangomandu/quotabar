@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.1
+
+**Fixed**
+- First session (before any message): Claude Code hasn't populated `rate_limits`
+  yet, so the CC bars are empty — the stale-Codex collapse used to render a lonely
+  `Cx idle` on its own line. Now suppressed when CC segments are configured but
+  empty (normalizes on first input). Codex-only setups still show standalone `Cx idle`.
+
 ## v1.0.0
 
 First stable release. A one-file (`bash` + `node`) Claude Code statusline for AI
@@ -28,5 +36,5 @@ coding **usage limits**, audited for security and per-render cost.
 - Symlink-safe Codex walk, sanitized cache paths, bounded reads / regexes / bar width / percent.
 
 **Quality**
-- 18-assertion test suite (`test.sh`); `CC_USAGE_DEBUG` / `--debug` diagnostics.
+- 20-assertion test suite (`test.sh`); `CC_USAGE_DEBUG` / `--debug` diagnostics.
 - Audited three independent ways: an adversarial review agent, OpenAI Codex, and Verdikt.

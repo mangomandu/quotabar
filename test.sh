@@ -52,6 +52,14 @@ fake 240
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cx" CC_USAGE_STALE_MIN=0)
 has "Cx 5h" "$o" && ok "STALE_MIN=0 -> never collapses" || bad "stale off" "$o"
 
+fake 240   # first session: no rate_limits + CC segments configured + stale Codex -> no lonely 'Cx idle'
+o=$(printf '%s' '{}' | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cx")
+[ -z "$o" ] && ok "missing rate_limits + stale Codex -> empty (no lonely 'Cx idle')" || bad "lonely idle" "$o"
+
+fake 240   # Codex-only config (no 5h/7d) keeps standalone 'Cx idle' even without rate_limits
+o=$(printf '%s' '{}' | run CC_USAGE_SEGMENTS='cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cx")
+has "Cx idle" "$o" && ok "Codex-only + stale -> standalone 'Cx idle' kept" || bad "codex-only idle" "$o"
+
 e=$(printf '%s' "$CC" | run CC_USAGE_DEBUG=1 2>&1 >/dev/null)
 { has "[quotabar debug]" "$e" && has "rate_limits:" "$e"; } && ok "--debug dumps diagnostics to stderr" || bad "debug" "$e"
 
