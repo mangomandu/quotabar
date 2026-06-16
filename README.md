@@ -130,7 +130,14 @@ Color the **provider** tag — applies to text or a monochrome symbol like `✿ 
 CC_USAGE_TAGCOLOR_CC=claude   # built-in: claude orange #d77757
 CC_USAGE_TAGCOLOR_CX=codex    # built-in: codex blue   #5769f7
 ```
-Colors accept a name (`claude`, `codex`, `orange`, `purple`, …), a 256-index, `#hex`, or `rgb(r,g,b)`.
+Colors accept a built-in name, a 256-index, `#hex`, or `rgb(r,g,b)`. The two brand defaults:
+
+| tag | name | value | what it is |
+|---|---|---|---|
+| `CC` | `claude` | `#d77757` | Claude's terracotta orange (the Claude Code accent) |
+| `Cx` | `codex`  | `#5769f7` | Codex blue — the same blue Claude Code shows while "compacting" |
+
+The Codex tag was almost **purple** before we settled on the blue — set `CC_USAGE_TAGCOLOR_CX=purple` (or `violet`) if you prefer that. Other built-in names: `orange` `purple` `violet` `blue` `pink` `coral` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 **Reset display — `CC_USAGE_RESET`**: `relative` (`4h00m`) · `clock` (`→18:40`) · `both`
 
@@ -152,7 +159,7 @@ On each render Claude Code pipes a JSON blob to the command. quotabar reads `rat
 
 - **Codex freshness**: quotabar reads Codex's limits from Codex's own session log, so they're exactly as current as the last time Codex ran — it can't refresh them on its own. Once Codex has been idle past `CC_USAGE_STALE_MIN` minutes (default 30) the rows collapse to `Cx idle`, so you're not staring at frozen numbers. (Two open sessions can briefly disagree right as Codex crosses that threshold.)
 - **Responsive lag**: the statusline re-runs when Claude Code re-renders (on activity), not on a bare terminal resize — so after resizing, the layout switches on your next action. (Watching the terminal continuously would require a persistent daemon, which this deliberately avoids.)
-- **Terminal glyphs**: some terminals force emoji presentation on symbols like ☁ (ignoring color). Use plain dingbats (`✿ ⬢ ● ◆`) for reliable custom colors, or colored emoji (🟧 🟦).
+- **Symbol tags**: if you put an emoji or symbol in a tag, some terminals force color-emoji presentation and ignore your `TAGCOLOR`. Use a plain dingbat (`✿ ⬢ ● ◆`) when you want your own color, or a color emoji (🟧 🟦) when you want a fixed-color glyph.
 
 ## Development
 

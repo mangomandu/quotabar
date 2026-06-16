@@ -143,7 +143,7 @@ const C=cfg.color?{R:"\x1b[0m",DIM:"\x1b[2m",B:"\x1b[1m",g:"\x1b[32m",y:"\x1b[33
 const thresh=!/^(off|0|false|no)$/i.test(env.CC_USAGE_THRESHOLD||"on"); // 막대 경고색 on|off
 const col=p=>thresh?(p>=cfg.crit?C.r:p>=cfg.warn?C.y:""):"";           // 기본 무채색, warn%↑ 노랑, crit%↑ 빨강만
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
-// 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
+// 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿ ⬢)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
   orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,coral:209,
   claude:"#d77757",codex:"#5769f7"};   // claude=Claude 오렌지, codex=Codex 블루(밝은 쪽, 다크 가독성)

@@ -130,7 +130,14 @@ CC_USAGE_TAG_5H=5h   CC_USAGE_TAG_7D=7d   CC_USAGE_TAG_CTX=ctx
 CC_USAGE_TAGCOLOR_CC=claude   # 내장: claude 오렌지 #d77757
 CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
 ```
-색은 이름(`claude`,`codex`,`orange`,`purple`…)/256번호/`#hex`/`rgb(r,g,b)` 다 됨.
+색은 내장 이름 / 256번호 / `#hex` / `rgb(r,g,b)`. 우리가 쓴 두 브랜드 기본값:
+
+| 태그 | 이름 | 값 | 정체 |
+|---|---|---|---|
+| `CC` | `claude` | `#d77757` | Claude 테라코타 오렌지(Claude Code 강조색) |
+| `Cx` | `codex`  | `#5769f7` | Codex 블루 — Claude Code가 "compacting" 때 쓰는 그 파랑 |
+
+Codex 태그는 블루로 정하기 전 **보라**가 후보였음 — 원하면 `CC_USAGE_TAGCOLOR_CX=purple`(또는 `violet`). 그 외 내장 이름: `orange` `purple` `violet` `blue` `pink` `coral` `teal` `lime` `red` `yellow` `green` `cyan` `magenta` `gray` `white`.
 
 **리셋 표시 — `CC_USAGE_RESET`**: `relative`(`4h00m`) · `clock`(`→18:40`) · `both`
 
@@ -152,7 +159,7 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: codex 블루   #5769f7
 
 - **Codex 신선도**: quotabar는 Codex 한도를 Codex 자체 세션 로그에서 읽음 → **마지막으로 Codex가 돈 시점 그대로**라 quotabar가 대신 갱신 못 함. `CC_USAGE_STALE_MIN`분(기본 30) 넘게 안 돌면 행이 `Cx idle`로 접혀 멈춘 숫자를 안 보게 됨. (임계 시점 근처에선 동시에 열린 두 세션이 잠깐 다르게 보일 수 있음.)
 - **반응형 지연**: statusline은 Claude Code가 다시 그릴 때(=활동) 재실행되지, 순수 터미널 resize엔 안 됨 — 그래서 창 크기 바꾼 뒤 **다음 동작** 때 레이아웃 전환. (계속 감시하려면 상주 데몬이 필요한데 의도적으로 피함.)
-- **터미널 글리프**: 일부 터미널은 ☁ 같은 기호를 컬러 이모지로 강제(색 무시). 색 확실히 원하면 단색 딩뱃(`✿ ⬢ ● ◆`)이나 컬러 이모지(🟧 🟦) 사용.
+- **기호 태그**: 태그에 이모지·기호를 넣으면 일부 터미널이 컬러 이모지로 강제 렌더해 지정 `TAGCOLOR`를 무시함. 내 색을 입히려면 단색 딩뱃(`✿ ⬢ ● ◆`), 고정색 글리프를 원하면 컬러 이모지(🟧 🟦).
 
 ## 개발
 
