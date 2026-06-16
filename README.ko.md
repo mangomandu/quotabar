@@ -59,6 +59,7 @@ CC_USAGE_SEGMENTS=5h,7d              # 기본: Claude Code 한 줄
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code 줄 + Codex 줄
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;ctx,cost
 ```
+**반응형:** `CC_USAGE_SEGMENTS_WIDE`(예: `5h,7d,sep,cx5h,cx7d`)를 지정하면 터미널이 `CC_USAGE_WIDE_AT`칸(기본 120) 이상으로 넓을 때 그 배치를 쓰고, 좁으면 `CC_USAGE_SEGMENTS`를 씁니다. 폭은 Claude Code가 주는 `COLUMNS` 환경변수에서 읽어 추가 프로세스가 없습니다.
 
 **라벨 — 자유 슬롯 4개**
 머리말 = `[공급자 태그] [윈도우 태그]`. 기본은 글자, 아무 글자/이모지로 교체. 공급자 태그는 줄마다 한 번만 표시 — 같은 줄의 두 번째 같은-공급자 윈도우(예: `CC 5h` 뒤 `7d`)는 생략됩니다.

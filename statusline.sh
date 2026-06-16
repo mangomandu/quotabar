@@ -8,6 +8,8 @@
 #                      항목: 5h 7d ctx model cost  cx5h cx7d  (cx*=Codex)  sep(구분선│)
 #                      "," = 같은 줄에 나란히,  ";" = 줄바꿈.
 #                      예) "5h,7d;cx5h,cx7d" → CC 한 줄, Codex 한 줄 (총 2줄)
+#   CC_USAGE_SEGMENTS_WIDE  터미널이 넓을 때(COLUMNS≥WIDE_AT) 대신 쓸 배치(반응형). 좁으면 SEGMENTS.
+#   CC_USAGE_WIDE_AT        WIDE 전환 폭 기준(기본 120). COLUMNS는 Claude Code가 줌(추가비용 0).
 #   CC_USAGE_RESET     리셋 표시: relative(기본,"4h00m") | clock("→18:40") | both
 #   CC_USAGE_TAG_CC    "CC" 자리 라벨(기본 "CC"). 아무 글자/이모지로 교체 (예: 🟧)
 #   CC_USAGE_TAG_CX    "Cx" 자리 라벨(기본 "Cx").                    (예: 🟦)
@@ -58,7 +60,12 @@ ttl="${CC_USAGE_CACHE_TTL:-2}"; case "$ttl" in *[!0-9]*) ttl=0;; esac
 sid=default
 case "$IN" in *'"session_id":"'*) sid="${IN#*\"session_id\":\"}"; sid="${sid%%\"*}";; esac
 case "$sid" in *[!A-Za-z0-9._-]*|'') sid=default;; esac     # 안전한 파일명만
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid"
+# 반응형: 터미널이 넓으면(COLUMNS≥WIDE_AT) WIDE 레이아웃 사용. COLUMNS는 Claude Code가 줌(공짜).
+cols="${COLUMNS:-0}"; case "$cols" in ''|*[!0-9]*) cols=0;; esac
+wat="${CC_USAGE_WIDE_AT:-120}"; case "$wat" in ''|*[!0-9]*) wat=120;; esac
+lw=n
+if [ -n "${CC_USAGE_SEGMENTS_WIDE:-}" ] && [ "$cols" -ge "$wat" ]; then export CC_USAGE_SEGMENTS="$CC_USAGE_SEGMENTS_WIDE"; lw=w; fi
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid-$lw"   # 폭(레이아웃)별 캐시
 if [ "$ttl" -gt 0 ] && [ -z "$CC_USAGE_DEBUG" ] && [ -f "$cache.o" ] && [ -f "$cache.t" ] && [ ! "$conf" -nt "$cache.t" ]; then
   IFS= read -r _ts < "$cache.t" 2>/dev/null || _ts=0
   case "$_ts" in ''|*[!0-9]*) _ts=0;; esac
@@ -240,7 +247,7 @@ if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
 if(env.CC_USAGE_DEBUG){
-  const KNOWN=["SEGMENTS","RESET","STYLE","BARS","WARN","CRIT","CODEX_DIR","CACHE_TTL","STALE_MIN","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
+  const KNOWN=["SEGMENTS","SEGMENTS_WIDE","WIDE_AT","RESET","STYLE","BARS","WARN","CRIT","THRESHOLD","CODEX_DIR","CACHE_TTL","STALE_MIN","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
   const unknown=Object.keys(env).filter(k=>k.indexOf("CC_USAGE_")===0&&KNOWN.indexOf(k)<0);
   const pc=o=>o&&o.used_percentage!=null?o.used_percentage+"%":"-";
   const px=o=>o&&o.used_percent!=null?o.used_percent+"%":"-";

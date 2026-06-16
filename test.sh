@@ -71,6 +71,11 @@ has "Cx 5h" "$o" && ok "large Codex session (>256KB after) -> rate_limits still 
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h,sep,7d)
 has "│" "$o" && ok "sep -> divider │" || bad "sep divider" "$o"
 
+o=$(printf '%s' "$CC" | run COLUMNS=200 CC_USAGE_SEGMENTS=5h CC_USAGE_SEGMENTS_WIDE=5h,sep,7d CC_USAGE_WIDE_AT=120)
+has "│" "$o" && ok "wide terminal -> WIDE layout" || bad "responsive wide" "$o"
+o=$(printf '%s' "$CC" | run COLUMNS=80 CC_USAGE_SEGMENTS=5h CC_USAGE_SEGMENTS_WIDE=5h,sep,7d CC_USAGE_WIDE_AT=120)
+{ ! has "│" "$o"; } && ok "narrow terminal -> base layout" || bad "responsive narrow" "$o"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]

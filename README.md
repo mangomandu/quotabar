@@ -70,6 +70,7 @@ CC_USAGE_SEGMENTS=5h,7d              # default: Claude Code on one line
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code row + Codex row
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d;ctx,cost
 ```
+**Responsive:** set `CC_USAGE_SEGMENTS_WIDE` (e.g. `5h,7d,sep,cx5h,cx7d`) to use a wider layout when the terminal is at least `CC_USAGE_WIDE_AT` columns (default 120); otherwise `CC_USAGE_SEGMENTS` is used. Width comes from the `COLUMNS` env Claude Code provides — no extra process.
 
 **Labels — four free slots**
 Head = `[provider tag] [window tag]`. Defaults are plain text; put any text or emoji. The provider tag shows once per line — a second same-provider window (e.g. the `7d` after `CC 5h`) drops it.
