@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="124" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15">
-  <rect width="640" height="124" rx="10" fill="#0d1117"/>
-  <circle cx="22" cy="22" r="5" fill="#ff5f56"/><circle cx="40" cy="22" r="5" fill="#ffbd2e"/><circle cx="58" cy="22" r="5" fill="#27c93f"/>
-  <text x="20" y="46" fill="#6e7681" font-size="12">quotabar — Claude Code + Codex usage limits</text>
-  <text x="20" y="70" xml:space="preserve"><tspan fill="#f0883e">✿</tspan><tspan fill="#c9d1d9"> 5h  </tspan><tspan fill="#3fb950">▰▰</tspan><tspan fill="#484f58">▱▱▱▱▱▱▱▱</tspan><tspan fill="#3fb950" font-weight="bold">  16%</tspan><tspan fill="#6e7681">  · 3h08m</tspan><tspan fill="#6e7681">    </tspan><tspan fill="#f0883e">✿</tspan><tspan fill="#c9d1d9"> 7d  </tspan><tspan fill="#d29922">▰▰▰▰▰▰▰</tspan><tspan fill="#484f58">▱▱▱</tspan><tspan fill="#d29922" font-weight="bold">  69%</tspan><tspan fill="#6e7681">  · 1d6h</tspan></text>
-  <text x="20" y="98" xml:space="preserve"><tspan fill="#a371f7">❖</tspan><tspan fill="#c9d1d9"> 5h  </tspan><tspan fill="#3fb950">▰</tspan><tspan fill="#484f58">▱▱▱▱▱▱▱▱▱</tspan><tspan fill="#3fb950" font-weight="bold">   7%</tspan><tspan fill="#6e7681">  · 2h13m</tspan><tspan fill="#6e7681">    </tspan><tspan fill="#a371f7">❖</tspan><tspan fill="#c9d1d9"> 7d  </tspan><tspan fill="#3fb950">▰▰</tspan><tspan fill="#484f58">▱▱▱▱▱▱▱▱</tspan><tspan fill="#3fb950" font-weight="bold">  16%</tspan><tspan fill="#6e7681">  · 4d15h</tspan></text>
-</svg>
