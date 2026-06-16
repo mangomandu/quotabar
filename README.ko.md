@@ -100,16 +100,32 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ## 설치
 
-`bash`, `node` 필요(Claude Code가 이미 Node 사용) · Linux · macOS · WSL.
+**한 줄, 모든 OS 공통.** 터미널에 붙여넣으세요:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
 ```
 
-`~/.claude/hooks/`에 `statusline.sh`, 기본 `~/.claude/cc-usage.conf` 설치, `~/.claude/settings.json`에 `statusLine` 연결(기존 백업). 새 세션 열면 보입니다.
+`~/.claude/hooks/`에 `statusline.sh`, 기본 `~/.claude/cc-usage.conf`를 깔고, `~/.claude/settings.json`에 `statusLine` 연결(기존 백업). 그다음 **새 Claude Code 세션을 열면**(또는 메시지 한 번 보내면) 보입니다. `bash`+`node`(둘 다 Claude Code에 이미 포함)와 `curl` 필요.
+
+### OS별
+
+| | 할 일 |
+|---|---|
+| 🍎 **macOS** | 터미널/iTerm에서 위 한 줄 실행이 끝. `bash`·`node`(Claude Code 동봉)·`curl` 다 이미 있어 추가 설치 없음. |
+| 🐧 **Linux** | 같은 한 줄. 미니멀 환경이라 `curl`이 없으면: `sudo apt install curl`(Debian/Ubuntu) 또는 `sudo dnf install curl`(Fedora/RHEL) 후 실행. |
+| 🪟 **Windows** | **WSL(Ubuntu 등) 안에서** 실행 — PowerShell/CMD 말고. quotabar는 bash 스크립트라서요. WSL 터미널 열고 한 줄 붙여넣고, Claude Code도 WSL 안에서 쓰세요. |
+
+`curl`이 없으면 `wget`으로:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
+```
+
+**업데이트 / 제거** — 업데이트는 위 한 줄을 다시 실행(설정 유지) 또는 `bash ~/.claude/hooks/statusline.sh --update`. 제거는 `~/.claude/settings.json`의 `statusLine` 항목을 지우고 `~/.claude/hooks/statusline.sh` 삭제.
 
 <details>
-<summary>수동 설치</summary>
+<summary>수동 설치 (스크립트 없이)</summary>
 
 1. `statusline.sh` → `~/.claude/hooks/statusline.sh` (`chmod +x`)
 2. `cc-usage.conf` → `~/.claude/cc-usage.conf`
@@ -119,7 +135,9 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
    ```
 </details>
 
-**Claude Code만 쓰는 경우.** 할 게 없습니다 — Codex 행은 기기에 Codex 세션 데이터가 있을 때만 렌더되니, 없으면 기본 상태에서 브랜드 색 Claude Code 두 줄(`5h`,`7d`)만 보입니다.
+> **Claude Code만 쓰는 경우.** 할 게 없습니다 — Codex 행은 기기에 Codex 세션 데이터가 있을 때만 보이고, 없으면 기본 상태에서 브랜드 색 Claude Code 두 줄(`5h`,`7d`)만 나옵니다.
+>
+> **`⏳ cc-usage: node not found`가 뜨면?** Claude Code를 통해 실행해 동봉 Node가 `PATH`에 오게 하거나, Node를 직접 설치하세요.
 
 ---
 

@@ -100,16 +100,32 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
 ## Install
 
-Needs `bash` and `node` (Claude Code already uses Node), on Linux, macOS, or WSL.
+**One line, same on every OS.** Paste it into your terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
 ```
 
-Drops `statusline.sh` into `~/.claude/hooks/`, adds a default `~/.claude/cc-usage.conf`, and wires up `statusLine` in `~/.claude/settings.json` (backing it up first). Open a new Claude Code session to see it.
+It drops `statusline.sh` into `~/.claude/hooks/`, adds a default `~/.claude/cc-usage.conf`, and wires `statusLine` into `~/.claude/settings.json` (backing it up first). Then **open a new Claude Code session** (or send a message) to see it. Needs `bash` + `node` (both already shipped with Claude Code) and `curl`.
+
+### Pick your OS
+
+| | what to do |
+|---|---|
+| 🍎 **macOS** | Just run the one-liner in Terminal/iTerm. `bash`, `node` (via Claude Code), and `curl` are already there — nothing else to install. |
+| 🐧 **Linux** | Same one-liner. If `curl` is missing on a minimal box: `sudo apt install curl` (Debian/Ubuntu) or `sudo dnf install curl` (Fedora/RHEL), then run it. |
+| 🪟 **Windows** | Run it **inside WSL** (Ubuntu, etc.) — *not* PowerShell/CMD, since quotabar is a bash script. Open your WSL terminal, paste the one-liner, and use Claude Code from within WSL. |
+
+No `curl`? Use `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh | bash
+```
+
+**Update / uninstall** — update by re-running the one-liner (keeps your config) or `bash ~/.claude/hooks/statusline.sh --update`. Uninstall by removing the `statusLine` entry from `~/.claude/settings.json` and deleting `~/.claude/hooks/statusline.sh`.
 
 <details>
-<summary>Manual install</summary>
+<summary>Manual install (no script)</summary>
 
 1. Copy `statusline.sh` to `~/.claude/hooks/statusline.sh` (`chmod +x`).
 2. Copy `cc-usage.conf` to `~/.claude/cc-usage.conf`.
@@ -119,7 +135,9 @@ Drops `statusline.sh` into `~/.claude/hooks/`, adds a default `~/.claude/cc-usag
    ```
 </details>
 
-**I only use Claude Code (no Codex).** Nothing to do — the Codex rows only render when Codex session data exists on your machine. Without it the default just shows the two brand-colored Claude Code rows (`5h`, `7d`).
+> **Just Claude Code, no Codex?** Nothing to do — the Codex rows only appear when Codex session data exists on your machine. Without it the default simply shows the two brand-colored Claude Code rows (`5h`, `7d`).
+>
+> **`⏳ cc-usage: node not found`?** Launch Claude Code so its bundled Node is on `PATH`, or install Node yourself.
 
 ---
 
