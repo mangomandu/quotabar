@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.1
+
+**Changed**
+- When Claude Code hasn't provided `rate_limits` — at session start, or after a long
+  idle when the session goes cold — the statusline now goes **fully blank** instead of
+  showing a lone model name. It repopulates the instant activity resumes (empty output
+  isn't cached, so no lag).
+
 ## v1.2.0
 
 **Added**

@@ -174,9 +174,9 @@ o=$(printf '%s' '{"effort":{"level":"xhigh"}}' | grun)
 o=$(printf '%s' '{"context_window":{"total_input_tokens":0,"context_window_size":1000000,"used_percentage":0}}' | run CC_USAGE_SEGMENTS=ctx)
 [ -z "$o" ] && ok "ctx -> hidden at zero usage (no spurious 0/1M)" || bad "ctx zero shown" "$o"
 
-# session start: rate_limits absent + model configured -> show ONLY the model
-o=$(printf '%s' '{"model":{"display_name":"Opus 4.8"}}' | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d;model,effort,ctx')
-{ has "Opus 4.8" "$o" && ! has "▰" "$o" && ! has "Cx" "$o"; } && ok "session start -> model only (no bars/Cx)" || bad "session start model" "$o"
+# session start / long idle: CC configured but rate_limits absent -> blank (no lonely model/Cx/effort)
+o=$(printf '%s' '{"model":{"display_name":"Opus 4.8"},"effort":{"level":"max"},"context_window":{"total_input_tokens":5000,"context_window_size":1000000}}' | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d;model,effort,ctx')
+[ -z "$o" ] && ok "CC not-ready (start/idle) -> blank (nothing lonely)" || bad "not-ready blank" "$o"
 
 # stale Codex on a one-line divider layout: 'Cx idle' renders IN PLACE (between dividers), no doubled '│ │'
 fake 240

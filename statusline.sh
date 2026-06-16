@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.2.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.2.1 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -36,7 +36,7 @@
 # 자동으로 적용됩니다(JSON 편집 불필요). 환경변수가 있으면 환경변수가 우선.
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
 
-VER="1.2.0"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
+VER="1.2.1"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
 
 # 버전 비교: $1 > $2 이면 0. 점 구분 숫자, fork·GNU(sort -V) 비의존(macOS/BSD 안전). 업데이트 알림 표시에만 씀.
 _qb_gt() {
@@ -349,11 +349,10 @@ let lines=cfg.rows.map(row=>{
   while(out.length&&out[out.length-1].sep)out.pop();
   return out.map(p=>p.t).join("   ");
 }).filter(Boolean);
-// 세션 처음: CC 한도가 설정됐는데 rate_limits가 아직 안 왔으면(로딩 전) — 어수선한 부분표시 대신 모델만.
-// 모델이 설정에 있으면 그것만 한 줄, 없으면 빈 출력(v1.0.2: 빈 출력은 캐시 안 함). 첫 메시지 후 전체 정상.
+// CC 한도가 설정됐는데 rate_limits가 없으면(세션 처음 로딩 전, 또는 오래 유휴로 식음) → statusline 통째로 비움.
+// 모델·effort 등 부분만 외롭게 띄우지 않음(빈 출력은 v1.0.2에 따라 캐시 안 함 → 첫 활동 시 즉시 복구).
 if(cfg.rows.some(r=>r.includes("5h")||r.includes("7d")) && !rl.five_hour && !rl.seven_day){
-  const mr=cfg.rows.some(r=>r.includes("model"))?render("model",true):null;
-  lines=mr?[mr]:[];
+  lines=[];
 }
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
