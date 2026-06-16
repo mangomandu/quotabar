@@ -60,11 +60,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ## 화면 모습
 
-**기본** — Claude Code만, 글자, 설정 0:
-
-![default](./assets/default.png)
-
-**두 공급자**, 브랜드 색(Claude 오렌지 / Codex 블루). 막대는 무채색이다가 **50%↑ 노랑**, **80%↑ 빨강**; `%`는 항상 흰색:
+**기본** — Claude Code와 Codex를 나란히, 브랜드 색(Claude 오렌지 / Codex 블루), 두 줄. 막대는 무채색이다가 **50%↑ 노랑**, **80%↑ 빨강**; `%`는 항상 흰색:
 
 ![demo](./assets/demo.png)
 
@@ -108,7 +104,7 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
 
 ## Claude Code만 쓰는 경우
 
-할 게 없습니다 — 그게 기본값. Claude Code 두 줄(`5h`,`7d`)만 뜨고, Codex 행은 기기에 Codex 세션 데이터가 있을 때만 나옵니다.
+할 게 없습니다. Codex 행은 기기에 Codex 세션 데이터가 있을 때만 렌더되니, 없으면 기본 상태에서 브랜드 색 Claude Code 두 줄(`5h`,`7d`)만 보입니다.
 
 ## 커스터마이즈
 
@@ -117,10 +113,10 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
 **무엇을/몇 줄로 — `CC_USAGE_SEGMENTS`**
 `,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`, `model`, `cost`, `sep`(`│` 구분선).
 ```
-CC_USAGE_SEGMENTS=5h,7d              # 기본
-CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code 줄 + Codex 줄
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # 기본 — Claude Code 줄 + Codex 줄
+CC_USAGE_SEGMENTS=5h,7d              # Claude Code만
 ```
-**반응형:** `CC_USAGE_SEGMENTS_WIDE`(예: `5h,7d,sep,cx5h,cx7d`)를 지정하면 터미널이 `CC_USAGE_WIDE_AT`칸(기본 120) 이상일 때 그 배치, 좁으면 `CC_USAGE_SEGMENTS`. 폭은 Claude Code가 주는 `COLUMNS`에서 읽어 추가 프로세스 없음.
+**반응형:** `CC_USAGE_SEGMENTS_WIDE`(기본 `5h,7d,sep,cx5h,cx7d`)는 터미널이 `CC_USAGE_WIDE_AT`칸(배포 기본 150; 한 줄 ≈ 134칸) 이상이면 적용, 좁으면 `CC_USAGE_SEGMENTS`. 폭은 Claude Code가 주는 `COLUMNS`에서 읽어 추가 프로세스 없음.
 
 **라벨 & 색**
 머리말 = `[공급자 태그] [윈도우 태그]`, **모든 칸 교체 가능** — 아무 글자/이모지, 비우면 그 칸 생략:

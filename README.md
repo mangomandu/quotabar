@@ -60,11 +60,7 @@ This is the part that matters: a statusline runs on *every* render, so it has to
 
 ## What it looks like
 
-**Default** — Claude Code only, plain text, zero config:
-
-![default](./assets/default.png)
-
-**Both providers**, brand-colored (Claude orange / Codex blue). Bars stay neutral, go **yellow past 50%** and **red past 80%**; the `%` is always white:
+**Default** — Claude Code and Codex side by side, brand-colored (Claude orange / Codex blue), two rows. Bars stay neutral, go **yellow past 50%** and **red past 80%**; the `%` is always white:
 
 ![demo](./assets/demo.png)
 
@@ -108,7 +104,7 @@ Drops `statusline.sh` into `~/.claude/hooks/`, adds a default `~/.claude/cc-usag
 
 ## I only use Claude Code (no Codex)
 
-Nothing to do — that's the default. You'll just see the two Claude Code rows (`5h`, `7d`); the Codex rows only appear if Codex session data exists on your machine.
+Nothing to do. The Codex rows only render when Codex session data exists on your machine — without it the default just shows the two brand-colored Claude Code rows (`5h`, `7d`).
 
 ## Customize
 
@@ -117,10 +113,10 @@ Edit **one file** — `~/.claude/cc-usage.conf` (no JSON). One `KEY=value` per l
 **What to show & layout — `CC_USAGE_SEGMENTS`**
 `,` puts items on the same line, `;` starts a new line. Items: `5h 7d` (Claude Code), `cx5h cx7d` (Codex), `ctx`, `model`, `cost`, `sep` (a `│` divider).
 ```
-CC_USAGE_SEGMENTS=5h,7d              # default
-CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # Claude Code row + Codex row
+CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # default — Claude Code row + Codex row
+CC_USAGE_SEGMENTS=5h,7d              # Claude Code only
 ```
-**Responsive:** set `CC_USAGE_SEGMENTS_WIDE` (e.g. `5h,7d,sep,cx5h,cx7d`) to use a wider layout when the terminal is at least `CC_USAGE_WIDE_AT` columns (default 120), else `CC_USAGE_SEGMENTS`. Width comes from the `COLUMNS` env Claude Code provides — no extra process.
+**Responsive:** `CC_USAGE_SEGMENTS_WIDE` (default `5h,7d,sep,cx5h,cx7d`) is used when the terminal is at least `CC_USAGE_WIDE_AT` columns (shipped default 150; the one-line layout is ≈ 134 cols), else `CC_USAGE_SEGMENTS`. Width comes from the `COLUMNS` env Claude Code provides — no extra process.
 
 **Labels & colors**
 The head is `[provider tag] [window tag]`, and **every slot is replaceable** — any text or emoji, or empty to omit it:

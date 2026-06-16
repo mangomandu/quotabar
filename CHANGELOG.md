@@ -11,6 +11,7 @@ coding **usage limits**, audited for security and per-render cost.
 - Optional: context %, model, session cost.
 
 **Layout & looks**
+- Ships configured for both providers by default — Claude Code + Codex, brand-colored (Claude orange / Codex blue), two rows, collapsing to one line on wide terminals. Codex rows auto-hide when no Codex session data exists, so the default is safe for Claude-Code-only users.
 - `CC_USAGE_SEGMENTS` with `,` (same line) / `;` (new line); items `5h 7d cx5h cx7d ctx model cost sep`.
 - Responsive: `CC_USAGE_SEGMENTS_WIDE` + `CC_USAGE_WIDE_AT` switch layouts by terminal `COLUMNS`.
 - Free-form labels (`CC_USAGE_TAG_*`) and tag colors (`CC_USAGE_TAGCOLOR_*`) — names, 256-index, `#hex`, `rgb()`; built-in `claude`/`codex` brand colors.
