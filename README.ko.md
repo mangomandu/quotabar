@@ -88,9 +88,9 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ![stale](./assets/stale.png)
 
-**막대 색** — 50% 미만 무채색, 50–80% 노랑, 80%+ 빨강. 위 실사는 실제 사용량(마침 무채색/빨강 구간), 이 표는 색 설명용 예시:
+**막대 색** — 막대는 50% 미만 무채색, 50–80% 노랑, 80%+ 빨강. 위 3장은 실제 사용량(무채색/빨강 구간), 아래는 세 색을 한 번에 보여주는 **예시 값**:
 
-![bar colors](./assets/colors.png)
+![bar colors — example values](./assets/colors.png)
 
 ---
 
