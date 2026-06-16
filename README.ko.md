@@ -147,7 +147,7 @@ wget -qO- https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh 
 
 #### 무엇을 / 몇 줄로 — `CC_USAGE_SEGMENTS`
 
-`,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`, `model`, `cost`, `sep`(`│` 구분선).
+`,`=같은 줄, `;`=줄바꿈. 항목: `5h 7d`(Claude Code), `cx5h cx7d`(Codex), `ctx`(컨텍스트 토큰 `544k/1M` 분수), `effort`(추론 강도), `model`, `cost`, `sep`(`│` 구분선).
 
 ```
 CC_USAGE_SEGMENTS=5h,7d;cx5h,cx7d    # 기본 — Claude Code 줄 + Codex 줄
@@ -221,7 +221,7 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: Claude Code 컴팩팅 블루 #5769f7
 
 ## 개발
 
-`bash test.sh`로 테스트(어설션 31개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
+`bash test.sh`로 테스트(어설션 41개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
 
 ## 라이선스
 

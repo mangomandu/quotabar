@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.2.0
+
+**Added**
+- `effort` segment — shows `<level> effort` (Claude Code's reasoning-effort level); when
+  the level is `max`, the word `max` gets a subtle purple gradient.
+- `ctx` reads `context_window` token counts: shows a compact fraction like `544k/1M`
+  (used / window) instead of bar+%, hidden at zero usage (no spurious `0/1M` at session
+  start). Falls back to `%` when token fields are absent.
+
+**Changed**
+- Bar fill: deeper, less-garish gold (warn) / red (crit) truecolor instead of bright ANSI.
+- Session start (before `rate_limits` arrives): show only the model name (if configured)
+  rather than a partial, cluttered line — the full statusline appears once data is ready.
+- Stale Codex renders `Cx idle` **in place** (where the Cx segment sits), not appended to
+  the line end — so it works in one-line / divider layouts.
+- Dividers self-clean: leading/trailing/consecutive `│` are dropped, so an empty Codex
+  slot no longer leaves a dangling or doubled divider.
+
+**Quality**
+- 41-assertion test suite, incl. a guard that the `node -e` script carries no stray single
+  quotes (which would silently break the bash wrapper and blank the statusline).
+- Verdikt: render cost unchanged at cache hit (common path runs identical code), +0.34 ms
+  at cache miss. Codex review: clean.
+
 ## v1.1.0
 
 **Added**

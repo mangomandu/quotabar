@@ -64,13 +64,13 @@ has "Cx idle" "$o" && ok "Codex-only + stale -> standalone 'Cx idle' kept" || ba
 e=$(printf '%s' "$CC" | run CC_USAGE_DEBUG=1 2>&1 >/dev/null)
 { has "[quotabar debug]" "$e" && has "rate_limits:" "$e"; } && ok "--debug dumps diagnostics to stderr" || bad "debug" "$e"
 
-GREEN=$'\033[32m'; YEL=$'\033[33m'
-o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d bash "$SL")   # 74%
-has "$YEL" "$o" && ok "past WARN -> yellow bar" || bad "warn color" "$o"
-o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h bash "$SL")   # 15%
-{ ! has "$GREEN" "$o" && ! has "$YEL" "$o"; } && ok "below WARN -> neutral bar (no green/yellow)" || bad "low neutral" "$o"
-o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d CC_USAGE_THRESHOLD=off bash "$SL")
-{ ! has "$YEL" "$o"; } && ok "threshold=off -> no level color" || bad "threshold off" "$o"
+WARN=$'\033[38;2;198;156;43m'; CRIT=$'\033[38;2;188;58;52m'   # deep gold/red bar fill (truecolor); NO_COLOR= forces color on
+o=$(printf '%s' "$CC" | env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d bash "$SL")   # 74% -> warn
+has "$WARN" "$o" && ok "past WARN -> deep gold bar" || bad "warn color" "$o"
+o=$(printf '%s' "$CC" | env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h bash "$SL")   # 15% -> neutral
+{ ! has "$WARN" "$o" && ! has "$CRIT" "$o"; } && ok "below WARN -> neutral bar (no warn/crit color)" || bad "low neutral" "$o"
+o=$(printf '%s' "$CC" | env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d CC_USAGE_THRESHOLD=off bash "$SL")
+{ ! has "$WARN" "$o"; } && ok "threshold=off -> no level color" || bad "threshold off" "$o"
 
 rm -rf "$TMP/cxbig"; mkdir -p "$TMP/cxbig/2026/06/16"
 node -e 'const fs=require("fs");const line=JSON.stringify({timestamp:new Date().toISOString(),payload:{rate_limits:{primary:{used_percent:42,resets_at:'$FUT'},secondary:{used_percent:42,resets_at:'$FUT'}}}});const pad=JSON.stringify({payload:{blob:"x".repeat(300000)}});fs.writeFileSync(process.argv[1],line+"\n"+pad+"\n")' "$TMP/cxbig/2026/06/16/rollout-b.jsonl"
@@ -152,6 +152,44 @@ ODIR="$TMP/oldupd"; rm -rf "$ODIR"; mkdir -p "$ODIR/quotabar"
 printf '%s\n' "$(date +%s)" > "$ODIR/quotabar/.update-check"; printf '0.0.1\n' > "$ODIR/quotabar/.update-available"
 o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$ODIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL")
 { ! has "⬆" "$o"; } && ok "older cached version -> no downgrade ⬆ prompt" || bad "downgrade shown" "$o"
+
+# --- context-as-fraction + effort segment (+ purple gradient at max) ---
+o=$(printf '%s' '{"context_window":{"total_input_tokens":396176,"context_window_size":1000000,"used_percentage":40}}' | run CC_USAGE_SEGMENTS=ctx)
+{ has "396k/1M" "$o" && ! has "%" "$o" && ! has "▰" "$o"; } && ok "ctx -> token fraction 396k/1M (no bar/%)" || bad "ctx fraction" "$o"
+
+o=$(printf '%s' '{"context_window":{"used_percentage":40}}' | run CC_USAGE_SEGMENTS=ctx)
+has "40%" "$o" && ok "ctx -> falls back to % when token fields absent" || bad "ctx fallback" "$o"
+
+o=$(printf '%s' '{"effort":{"level":"xhigh"}}' | run CC_USAGE_SEGMENTS=effort)
+has "xhigh effort" "$o" && ok "effort -> '<level> effort'" || bad "effort text" "$o"
+
+# purple gradient only when effort=max (color ON)
+grun(){ env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=effort bash "$SL"; }   # NO_COLOR= forces color on (hermetic)
+o=$(printf '%s' '{"effort":{"level":"max"}}' | grun)
+has "38;2;203;166;247" "$o" && ok "effort=max -> purple gradient" || bad "max gradient" "$o"
+o=$(printf '%s' '{"effort":{"level":"xhigh"}}' | grun)
+{ ! has "38;2;" "$o"; } && ok "effort=xhigh -> no gradient (plain dim)" || bad "xhigh gradient leak" "$o"
+
+# ctx with zero usage (session start) is hidden, not a spurious "0/1M"
+o=$(printf '%s' '{"context_window":{"total_input_tokens":0,"context_window_size":1000000,"used_percentage":0}}' | run CC_USAGE_SEGMENTS=ctx)
+[ -z "$o" ] && ok "ctx -> hidden at zero usage (no spurious 0/1M)" || bad "ctx zero shown" "$o"
+
+# session start: rate_limits absent + model configured -> show ONLY the model
+o=$(printf '%s' '{"model":{"display_name":"Opus 4.8"}}' | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d;model,effort,ctx')
+{ has "Opus 4.8" "$o" && ! has "▰" "$o" && ! has "Cx" "$o"; } && ok "session start -> model only (no bars/Cx)" || bad "session start model" "$o"
+
+# stale Codex on a one-line divider layout: 'Cx idle' renders IN PLACE (between dividers), no doubled '│ │'
+fake 240
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC_USAGE_CODEX_DIR="$TMP/cx")
+{ has "Cx idle" "$o" && ! has "│   │" "$o"; } && ok "stale Codex (divider layout) -> 'Cx idle' in place, no double divider" || bad "stale divider" "$o"
+
+# empty cx segments must not leave a dangling/double divider (no Codex data)
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC_USAGE_CODEX_DIR="$TMP/none")
+{ ! has "│   │" "$o"; } && ok "absent cx -> divider cleanup (no doubled │)" || bad "double divider" "$o"
+
+# guard: the node -e '...' script must contain NO single quotes (a stray ' breaks the bash wrapper -> empty output)
+inner=$(awk '/\| node -e/{f=1;next} f&&$0=="\x27)"{f=0} f' "$SL")
+{ ! printf '%s' "$inner" | grep -q "'"; } && ok "node -e block has no stray single quotes (bash wrapper intact)" || bad "stray single quote in node block" "$(printf '%s' "$inner" | grep -n "'" | head -3)"
 
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"

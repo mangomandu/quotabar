@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# quotabar v1.1.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.2.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
 # 설정(환경변수, 모두 선택):
 #   CC_USAGE_SEGMENTS  표시 항목/배치. 기본 "5h,7d".
-#                      항목: 5h 7d ctx model cost  cx5h cx7d  (cx*=Codex)  sep(구분선│)
+#                      항목: 5h 7d ctx(분수) effort model cost  cx5h cx7d  (cx*=Codex)  sep(구분선│)
 #                      "," = 같은 줄에 나란히,  ";" = 줄바꿈.
 #                      예) "5h,7d;cx5h,cx7d" → CC 한 줄, Codex 한 줄 (총 2줄)
 #   CC_USAGE_SEGMENTS_WIDE  터미널이 넓을 때(COLUMNS≥WIDE_AT) 대신 쓸 배치(반응형). 좁으면 SEGMENTS.
@@ -36,7 +36,7 @@
 # 자동으로 적용됩니다(JSON 편집 불필요). 환경변수가 있으면 환경변수가 우선.
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
 
-VER="1.1.0"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
+VER="1.2.0"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
 
 # 버전 비교: $1 > $2 이면 0. 점 구분 숫자, fork·GNU(sort -V) 비의존(macOS/BSD 안전). 업데이트 알림 표시에만 씀.
 _qb_gt() {
@@ -212,8 +212,11 @@ const tag={
 const C=cfg.color?{R:"\x1b[0m",DIM:"\x1b[2m",B:"\x1b[1m",g:"\x1b[32m",y:"\x1b[33m",r:"\x1b[31m"}
                  :{R:"",DIM:"",B:"",g:"",y:"",r:""};
 const thresh=!/^(off|0|false|no)$/i.test(env.CC_USAGE_THRESHOLD||"on"); // 막대 경고색 on|off
-const col=p=>thresh?(p>=cfg.crit?C.r:p>=cfg.warn?C.y:""):"";           // 기본 무채색, warn%↑ 노랑, crit%↑ 빨강만
+const DEEP={warn:"\x1b[38;2;198;156;43m",crit:"\x1b[38;2;188;58;52m"};  // 막대 채움색: 쨍한 ANSI 대신 진한 골드/레드(truecolor)
+const col=p=>(thresh&&cfg.color)?(p>=cfg.crit?DEEP.crit:p>=cfg.warn?DEEP.warn:""):"";  // warn%↑ 진골드, crit%↑ 진레드
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
+// 색 보간 → ANSI truecolor escape (effort max 그라데이션용)
+const lerpC=(c1,c2,t)=>"\x1b[38;2;"+Math.round(c1[0]+(c2[0]-c1[0])*t)+";"+Math.round(c1[1]+(c2[1]-c1[1])*t)+";"+Math.round(c1[2]+(c2[2]-c1[2])*t)+"m";
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿ ⬢)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
   orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,coral:209,
@@ -259,14 +262,26 @@ const resetStr=o=>{
 const staleMin=parseInt(env.CC_USAGE_STALE_MIN||"30",10);  // Codex가 이 분(min) 넘게 안 돌면 idle 로 접음
 const codexStale=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000;
 // prov=공급자 태그키(cc/cx), win=윈도우 태그키(5h/7d), tagKey=단일 태그(ctx 등)
+// 토큰 수 사람친화 표기: 396176→"396k", 1000000→"1M", 1500000→"1.5M"
+const hum=n=>{n=Number(n);if(!Number.isFinite(n))return null;
+  if(n>=1e6){const m=n/1e6;return (Number.isInteger(m)?m:m.toFixed(1))+"M";}
+  if(n>=1e3)return Math.round(n/1e3)+"k";
+  return String(Math.round(n));};
+// 정적 보라 그라데이션: 글자마다 색 보간(애니메이션 아님, 비용 0). 컬러 꺼지면 평문.
+const grad=(str,c1,c2)=>{
+  if(!cfg.color)return str;
+  const n=Math.max(1,str.length-1);let out="";
+  for(let i=0;i<str.length;i++)out+=lerpC(c1,c2,i/n)+str[i];
+  return out+C.R;};
 const SEG={
   "5h":   {prov:"cc", win:"5h", type:"limit", get:()=>rl.five_hour},
   "7d":   {prov:"cc", win:"7d", type:"limit", get:()=>rl.seven_day},
   "cx5h": {prov:"cx", win:"5h", type:"limit", get:()=>cxNorm(cx.primary)},
   "cx7d": {prov:"cx", win:"7d", type:"limit", get:()=>cxNorm(cx.secondary)},
-  "ctx":  {tagKey:"ctx", type:"pct",  get:()=>d.context_window},
+  "ctx":  {tagKey:"ctx", type:"ctxfrac", get:()=>d.context_window},
   "model":{type:"text", get:()=>clean(d.model&&d.model.display_name)||null},
   "cost": {type:"text", get:()=>{const c=Number(d.cost&&d.cost.total_cost_usd);return Number.isFinite(c)?"$"+c.toFixed(2):null;}},
+  "effort":{type:"effort", get:()=>clean(d.effort&&d.effort.level)||null},
 };
 // 머리말 = 공급자태그 + 윈도우태그 (예: 기본 "CC 5h", 커스텀 "🟧 ⏳"). ctx는 단일 태그. model/cost는 없음.
 const head=(s,showProv)=>{
@@ -279,13 +294,33 @@ const head=(s,showProv)=>{
   if(s.tagKey)return tag[s.tagKey]||"";
   return "";
 };
+let cxIdleShown=false;   // Codex 스테일 시 Cx idle 토큰은 (여러 cx 세그 중) 첫 자리에만 인플레이스로 1회
 const render=(key,showProv)=>{
   if(key==="sep"||key==="|")return C.DIM+"│"+C.R;   // 구분선(예: 같은 줄에서 CC│Cx)
   const s=SEG[key];if(!s)return null;
-  if(s.prov==="cx"&&codexStale)return null;   // Codex 스테일 → 개별 막대 대신 collapse 토큰(아래)
+  if(s.prov==="cx"&&codexStale){   // Codex 스테일 → 막대 대신 Cx idle 을 그 자리에(첫 cx만), 나머지 cx는 숨김
+    if(cxIdleShown)return null;
+    cxIdleShown=true;
+    const cxt=tag.cx||"Cx";
+    return (provColor.cx?provColor.cx+cxt+C.R:C.DIM+cxt+C.R)+C.DIM+" idle"+C.R;
+  }
   const o=s.get();
   const h=head(s,showProv);
   if(s.type==="text"){if(!o)return null;return (h?h+" ":"")+C.DIM+o+C.R;}
+  if(s.type==="ctxfrac"){   // 컨텍스트를 분수로: 396k/1M (막대·% 없음). 토큰 필드 없으면 %로 폴백
+    if(!o)return null;
+    const tok=Number(o.total_input_tokens), size=Number(o.context_window_size);
+    // 사용량 0이면(세션 처음, 아직 안 채워짐) 숨김 — 스푸리어스 "0/1M" 방지(첫 사용 후 표시)
+    if(Number.isFinite(tok)&&tok>0&&Number.isFinite(size)&&size>0)
+      return (h?h+" ":"")+C.DIM+hum(tok)+"/"+hum(size)+C.R;
+    const p=Number(o.used_percentage);
+    return (Number.isFinite(p)&&p>0)?(h?h+" ":"")+C.DIM+Math.round(p)+"%"+C.R:null;
+  }
+  if(s.type==="effort"){    // "<level> effort". max면 max 단어만 보라 그라데이션, 나머지·effort는 흐리게
+    if(!o)return null;
+    if(o==="max")return (h?h+" ":"")+grad("max",[203,166,247],[124,58,237])+C.DIM+" effort"+C.R;
+    return (h?h+" ":"")+C.DIM+o+" effort"+C.R;
+  }
   if(!o)return null;
   const raw=Number(o.used_percentage);
   if(!Number.isFinite(raw))return null;   // 숫자 아니면 NaN% 대신 항목 숨김
@@ -299,24 +334,26 @@ const render=(key,showProv)=>{
 };
 
 let lines=cfg.rows.map(row=>{
-  const seen=new Set(), parts=[];
+  const seen=new Set(); const parts=[];
   for(const key of row){
+    const isSep=(key==="sep"||key==="|");
     const s=SEG[key], prov=s&&s.prov;
     const r=render(key, !prov||!seen.has(prov));  // 공급자 첫 등장에만 태그 표시
     if(r==null)continue;
     if(prov)seen.add(prov);
-    parts.push(r);
+    parts.push({sep:isSep,t:r});
   }
-  return parts.join("   ");
+  // 구분선 정리: 맨 앞/뒤 sep와 연속 sep 제거(빈 cx 등으로 이중 구분선·끝 구분선 생기는 것 방지)
+  const out=[];
+  for(const p of parts){ if(p.sep&&(out.length===0||out[out.length-1].sep))continue; out.push(p); }
+  while(out.length&&out[out.length-1].sep)out.pop();
+  return out.map(p=>p.t).join("   ");
 }).filter(Boolean);
-// Codex 스테일 → Cx idle 한 토막으로 접어 CC(첫 줄) 뒤에 이어붙임
-if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
-  const cxt=tag.cx||"Cx";
-  const tok=(provColor.cx?provColor.cx+cxt+C.R:C.DIM+cxt+C.R)+C.DIM+" idle"+C.R;  // 공급자색 유지 + idle은 흐리게
-  // CC 줄이 있으면 뒤에 붙임. CC 세그먼트(5h/7d)가 아예 없는 Codex 전용 설정이면 단독 표시.
-  // CC가 설정됐는데도 비어 있으면(첫 세션: rate_limits 아직 없음) 외로운 "Cx idle" 대신 숨김 → 첫 입력 시 정상화.
-  if(lines.length)lines[0]+="   "+tok;
-  else if(!cfg.rows.some(r=>r.includes("5h")||r.includes("7d")))lines=[tok];
+// 세션 처음: CC 한도가 설정됐는데 rate_limits가 아직 안 왔으면(로딩 전) — 어수선한 부분표시 대신 모델만.
+// 모델이 설정에 있으면 그것만 한 줄, 없으면 빈 출력(v1.0.2: 빈 출력은 캐시 안 함). 첫 메시지 후 전체 정상.
+if(cfg.rows.some(r=>r.includes("5h")||r.includes("7d")) && !rl.five_hour && !rl.seven_day){
+  const mr=cfg.rows.some(r=>r.includes("model"))?render("model",true):null;
+  lines=mr?[mr]:[];
 }
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
