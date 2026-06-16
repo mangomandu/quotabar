@@ -74,6 +74,8 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ## 화면 모습
 
+> 전부 라이브 statusline의 실사 캡처 — 실제 사용량, 목업 아님.
+
 **기본** — Claude Code와 Codex를 나란히, 브랜드 색(Claude 테라코타 / Codex 블루), 두 줄. 막대는 무채색이다가 **50%↑ 노랑**, **80%↑ 빨강**; `%`는 항상 흰색:
 
 ![demo](./assets/demo.png)
@@ -85,6 +87,10 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 **Codex가 `CC_USAGE_STALE_MIN`분 넘게 idle → 행이 접힘** (CC 뒤에 `Cx idle` 한 토막):
 
 ![stale](./assets/stale.png)
+
+**막대 색** — 50% 미만 무채색, 50–80% 노랑, 80%+ 빨강. 위 실사는 실제 사용량(마침 무채색/빨강 구간), 이 표는 색 설명용 예시:
+
+![bar colors](./assets/colors.png)
 
 ---
 

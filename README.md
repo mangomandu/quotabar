@@ -74,6 +74,8 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
 ## What it looks like
 
+> Real captures of the live statusline showing actual usage — not mockups.
+
 **Default** — Claude Code and Codex side by side, brand-colored (Claude terra cotta / Codex blue), two rows. Bars stay neutral, go **yellow past 50%** and **red past 80%**; the `%` is always white:
 
 ![demo](./assets/demo.png)
@@ -85,6 +87,10 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 **Codex idle past `CC_USAGE_STALE_MIN` min → its rows collapse** to a compact `Cx idle` tag after Claude Code:
 
 ![stale](./assets/stale.png)
+
+**Bar colors** — neutral below 50%, yellow at 50–80%, red at 80%+. The live shots above are real usage (which happens to land neutral/red); this key is illustrative:
+
+![bar colors](./assets/colors.png)
 
 ---
 
