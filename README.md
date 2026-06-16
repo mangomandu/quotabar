@@ -127,6 +127,12 @@ It also **caches its output per session for `CC_USAGE_CACHE_TTL` seconds** (defa
 - **Terminal glyphs**: some terminals force emoji presentation on symbols like ☁, ignoring color. Stick to plain dingbats (`✿ ⬢ ● ◆`) for reliable custom colors, or use colored emoji squares (🟧 🟪).
 - **Refresh cadence**: Claude Code re-runs the statusline on activity (throttled), so the % tracks near-real-time, not as a live ticking counter.
 
+## Development
+
+Run `bash test.sh` to execute the test suite (11 assertions; needs `bash` + `node`).
+
+For diagnostics, run `CC_USAGE_DEBUG=1 … bash statusline.sh` (or `bash statusline.sh --debug`): it prints the parsed `rate_limits`, the resolved config and tags, the chosen Codex file and its freshness, and any unknown `CC_USAGE_*` keys (typos) to stderr.
+
 ## License
 
 MIT

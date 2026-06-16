@@ -23,6 +23,7 @@
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
 #   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
+#   CC_USAGE_DEBUG     설정 시(또는 첫 인자 --debug) 파싱·설정·codex 진단을 stderr로 출력
 #   NO_COLOR           비어있지 않게 설정 시 색상 비활성(no-color.org 관례)
 #
 # 위 변수들은 설정 파일 ~/.claude/cc-usage.conf 에 "KEY=value" 한 줄씩 적어두면
@@ -30,6 +31,8 @@
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
 
 command -v node >/dev/null 2>&1 || { printf '⏳ cc-usage: node not found'; exit 0; }
+
+[ "$1" = "--debug" ] && export CC_USAGE_DEBUG=1   # 진단 출력(stderr). CC_USAGE_DEBUG=1 로도 가능
 
 # 설정 파일 로드: "KEY=value" 줄만 인식, 주석(#)/빈 줄 무시, 환경변수가 우선
 conf="${CC_USAGE_CONFIG:-$HOME/.claude/cc-usage.conf}"
@@ -55,7 +58,7 @@ sid=default
 case "$IN" in *'"session_id":"'*) sid="${IN#*\"session_id\":\"}"; sid="${sid%%\"*}";; esac
 case "$sid" in *[!A-Za-z0-9._-]*|'') sid=default;; esac     # 안전한 파일명만
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid"
-if [ "$ttl" -gt 0 ] && [ -f "$cache.o" ] && [ -f "$cache.t" ] && [ ! "$conf" -nt "$cache.t" ]; then
+if [ "$ttl" -gt 0 ] && [ -z "$CC_USAGE_DEBUG" ] && [ -f "$cache.o" ] && [ -f "$cache.t" ] && [ ! "$conf" -nt "$cache.t" ]; then
   IFS= read -r _ts < "$cache.t" 2>/dev/null || _ts=0
   case "$_ts" in ''|*[!0-9]*) _ts=0;; esac
   _now=$(date +%s 2>/dev/null || echo 0)
@@ -83,22 +86,29 @@ const cfg={
 
 // Codex: cx 세그먼트가 있을 때만 최신 세션 파일 끝부분(≤256KB)에서 마지막 rate_limits 추출.
 // 서브셸(ls/tail/grep) 없이 node 안에서 처리 → 가벼움. primary=5h, secondary=weekly.
-let cx={},cxTs=0;
+let cx={},cxTs=0,codexFile=null;
 if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
   try{
     const root=env.CC_USAGE_CODEX_DIR||require("os").homedir()+"/.codex/sessions";
-    let newest=null,nm=-1;
-    const walk=(dir,depth)=>{
-      let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return}
-      for(const e of ents){const p=dir+"/"+e.name;
-        if(depth<3){if(e.isDirectory())walk(p,depth+1)}
-        else if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
-          let m;try{m=fs.statSync(p).mtimeMs}catch(_){continue}
-          if(m>nm){nm=m;newest=p}}}
+    // 사전식(파일명=시간순)으로 최신 연/월/일 디렉토리 우선 → 그 날의 rollout 중 mtime 최신.
+    // 전체 파일 stat 대신 가장 최근 날짜만 봄(#3). 비어 있으면 다음 후보로 백트랙.
+    const find=(dir,depth)=>{
+      let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return null}
+      if(depth===3){
+        let best=null,nm=-1;
+        for(const e of ents)if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
+          let m;try{m=fs.statSync(dir+"/"+e.name).mtimeMs}catch(_){continue}
+          if(m>nm){nm=m;best=dir+"/"+e.name}
+        }
+        return best;
+      }
+      const subs=ents.filter(e=>e.isDirectory()).map(e=>e.name).sort((a,b)=>a<b?1:a>b?-1:0);
+      for(const name of subs){const r=find(dir+"/"+name,depth+1);if(r)return r}
+      return null;
     };
-    walk(root,0);
-    if(newest){
-      const fd=fs.openSync(newest,"r"),sz=fs.fstatSync(fd).size,n=Math.min(sz,262144);
+    codexFile=find(root,0);
+    if(codexFile){
+      const fd=fs.openSync(codexFile,"r"),sz=fs.fstatSync(fd).size,n=Math.min(sz,262144);
       const b=Buffer.alloc(n);fs.readSync(fd,b,0,n,sz-n);fs.closeSync(fd);
       const arr=b.toString("utf8").split("\n");
       for(let i=arr.length-1;i>=0;i--){
@@ -126,7 +136,8 @@ const col=p=>p>=cfg.crit?C.r:p>=cfg.warn?C.y:C.g;
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
-  orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118};
+  orange:208,purple:135,violet:99,pink:213,gray:244,grey:244,teal:44,lime:118,
+  coral:209,codex:36};   // coral≈#ff875f, codex=OpenAI green≈#10a37f
 const tcol=spec=>{
   if(!cfg.color||!spec)return"";
   const n=/^\d+$/.test(spec)?parseInt(spec,10):NAMED[String(spec).toLowerCase()];
@@ -214,8 +225,25 @@ let lines=cfg.rows.map(row=>{
 }).filter(Boolean);
 // Codex 스테일 → Cx idle 한 토막으로 접어 CC(첫 줄) 뒤에 이어붙임
 if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
-  const tok=C.DIM+(tag.cx||"Cx")+" idle"+C.R;
+  const cxt=tag.cx||"Cx";
+  const tok=(provColor.cx?provColor.cx+cxt+C.R:C.DIM+cxt+C.R)+C.DIM+" idle"+C.R;  // 공급자색 유지 + idle은 흐리게
   if(lines.length)lines[0]+="   "+tok; else lines=[tok];
+}
+
+// #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
+if(env.CC_USAGE_DEBUG){
+  const KNOWN=["SEGMENTS","RESET","STYLE","BARS","WARN","CRIT","CODEX_DIR","CACHE_TTL","STALE_MIN","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
+  const unknown=Object.keys(env).filter(k=>k.indexOf("CC_USAGE_")===0&&KNOWN.indexOf(k)<0);
+  const pc=o=>o&&o.used_percentage!=null?o.used_percentage+"%":"-";
+  const px=o=>o&&o.used_percent!=null?o.used_percent+"%":"-";
+  const E=process.stderr;
+  E.write("[quotabar debug]\n");
+  E.write("  rate_limits: "+(d.rate_limits?"five_hour="+pc(rl.five_hour)+" seven_day="+pc(rl.seven_day):"MISSING from stdin")+"\n");
+  E.write("  ctx="+pc(d.context_window)+" cost="+(d.cost&&d.cost.total_cost_usd!=null?"$"+d.cost.total_cost_usd:"-")+" model="+((d.model&&d.model.display_name)||"-")+"\n");
+  E.write("  config: segments="+JSON.stringify(cfg.rows)+" reset="+cfg.reset+" style="+(cfg.ascii?"ascii":"unicode")+" bars="+cfg.width+" warn="+cfg.warn+" crit="+cfg.crit+" color="+(cfg.color?"on":"off")+"\n");
+  E.write("  tags: cc="+tag.cc+" cx="+tag.cx+" 5h="+tag["5h"]+" 7d="+tag["7d"]+" ctx="+tag.ctx+"\n");
+  E.write("  codex: file="+(codexFile||"(none)")+" staleMin="+staleMin+" stale="+codexStale+" ageMin="+(cxTs?Math.floor((Date.now()-cxTs)/60000):"-")+" primary="+px(cx.primary)+" secondary="+px(cx.secondary)+"\n");
+  if(unknown.length)E.write("  WARNING unknown CC_USAGE_* keys (typo?): "+unknown.join(", ")+"\n");
 }
 process.stdout.write(lines.join("\n"));
 ')

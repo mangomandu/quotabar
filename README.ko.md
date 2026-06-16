@@ -116,6 +116,12 @@ quotabar는 **데몬·타이머·자동시작이 없습니다.** Claude Code가 
 - **터미널 글리프**: 일부 터미널은 ☁ 같은 기호를 컬러 이모지로 강제 렌더해 색을 무시합니다. 색을 확실히 입히려면 단색 딩뱃(`✿ ❖ ● ◆`)을 쓰거나, 컬러 이모지 사각형(🟧 🟪)을 쓰세요.
 - **갱신 주기**: Claude Code는 활동 시 statusline을 다시 실행(쓰로틀 적용)하므로, %는 실시간에 가깝게 따라가지만 째깍거리는 실시간 카운터는 아닙니다.
 
+## 개발
+
+`bash test.sh` 로 테스트 스위트 실행 (어설션 11개; `bash` + `node` 필요).
+
+진단이 필요하면 `CC_USAGE_DEBUG=1 … bash statusline.sh` (또는 `bash statusline.sh --debug`): 파싱된 `rate_limits`, 적용된 설정·태그, 고른 Codex 파일과 신선도, 인식 못 한 `CC_USAGE_*` 키(오타)를 stderr로 출력합니다.
+
 ## 라이선스
 
 MIT
