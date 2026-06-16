@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.2.1 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.2.2 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -36,7 +36,7 @@
 # 자동으로 적용됩니다(JSON 편집 불필요). 환경변수가 있으면 환경변수가 우선.
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
 
-VER="1.2.1"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
+VER="1.2.2"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
 
 # 버전 비교: $1 > $2 이면 0. 점 구분 숫자, fork·GNU(sort -V) 비의존(macOS/BSD 안전). 업데이트 알림 표시에만 씀.
 _qb_gt() {
@@ -273,6 +273,10 @@ const grad=(str,c1,c2)=>{
   const n=Math.max(1,str.length-1);let out="";
   for(let i=0;i<str.length;i++)out+=lerpC(c1,c2,i/n)+str[i];
   return out+C.R;};
+// 한 줄(wide) 레이아웃이면 간격 좁히고 % 패딩 생략; 여러 줄이면 현재 간격 + % 열 정렬 유지
+const oneLine=cfg.rows.length===1;
+const SP=oneLine?" ":"  ";   // 세그먼트 내부 간격(머리말·바·리셋 주변)
+const JN=oneLine?"  ":"   "; // 세그먼트 사이 간격(구분선 포함)
 const SEG={
   "5h":   {prov:"cc", win:"5h", type:"limit", get:()=>rl.five_hour},
   "7d":   {prov:"cc", win:"7d", type:"limit", get:()=>rl.seven_day},
@@ -325,10 +329,10 @@ const render=(key,showProv)=>{
   const raw=Number(o.used_percentage);
   if(!Number.isFinite(raw))return null;   // 숫자 아니면 NaN% 대신 항목 숨김
   const p=Math.max(0,Math.min(100,Math.round(raw)));   // 0~100 클램프
-  let out=(h?h+"  ":"")+bar(p)+"  "+C.B+String(p).padStart(3)+"%"+C.R;   // 막대=사용률색 / %글씨=항상 흰색(bold)
+  let out=(h?h+SP:"")+bar(p)+SP+C.B+(oneLine?String(p):String(p).padStart(3))+"%"+C.R;   // 막대=사용률색 / %글씨=항상 흰색(bold)
   if(s.type==="limit"){
     const t=ms(o), expired=t!=null&&Date.now()>=t;   // 윈도우가 이미 리셋됨 → 카운트다운 무의미
-    if(!expired){const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;}
+    if(!expired){const rs=resetStr(o);if(rs)out+=SP+C.DIM+"· "+rs+C.R;}
   }
   return out;
 };
@@ -347,7 +351,7 @@ let lines=cfg.rows.map(row=>{
   const out=[];
   for(const p of parts){ if(p.sep&&(out.length===0||out[out.length-1].sep))continue; out.push(p); }
   while(out.length&&out[out.length-1].sep)out.pop();
-  return out.map(p=>p.t).join("   ");
+  return out.map(p=>p.t).join(JN);
 }).filter(Boolean);
 // CC 한도가 설정됐는데 rate_limits가 없으면(세션 처음 로딩 전, 또는 오래 유휴로 식음) → statusline 통째로 비움.
 // 모델·effort 등 부분만 외롭게 띄우지 않음(빈 출력은 v1.0.2에 따라 캐시 안 함 → 첫 활동 시 즉시 복구).

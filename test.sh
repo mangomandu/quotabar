@@ -181,11 +181,11 @@ o=$(printf '%s' '{"model":{"display_name":"Opus 4.8"},"effort":{"level":"max"},"
 # stale Codex on a one-line divider layout: 'Cx idle' renders IN PLACE (between dividers), no doubled '│ │'
 fake 240
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC_USAGE_CODEX_DIR="$TMP/cx")
-{ has "Cx idle" "$o" && ! has "│   │" "$o"; } && ok "stale Codex (divider layout) -> 'Cx idle' in place, no double divider" || bad "stale divider" "$o"
+{ has "Cx idle" "$o" && ! has "│  │" "$o"; } && ok "stale Codex (divider layout) -> 'Cx idle' in place, no double divider" || bad "stale divider" "$o"
 
 # empty cx segments must not leave a dangling/double divider (no Codex data)
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC_USAGE_CODEX_DIR="$TMP/none")
-{ ! has "│   │" "$o"; } && ok "absent cx -> divider cleanup (no doubled │)" || bad "double divider" "$o"
+{ ! has "│  │" "$o"; } && ok "absent cx -> divider cleanup (no doubled │)" || bad "double divider" "$o"
 
 # guard: the node -e '...' script must contain NO single quotes (a stray ' breaks the bash wrapper -> empty output)
 inner=$(awk '/\| node -e/{f=1;next} f&&$0=="\x27)"{f=0} f' "$SL")

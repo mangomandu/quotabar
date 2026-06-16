@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.2
+
+**Changed**
+- Layout-aware spacing: the one-line (wide) layout is tighter — single spaces around
+  bars and no `%` padding — while the multi-row layout keeps its wider spacing and an
+  aligned `%` column. (Pure formatting; no render-cost change.)
+
 ## v1.2.1
 
 **Changed**
