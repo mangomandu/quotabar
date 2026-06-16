@@ -84,7 +84,7 @@ This compares *cost*, not features — RunCat shows system CPU, not AI usage.
 
 ![wide](./assets/wide.png)
 
-**Codex idle past `CC_USAGE_STALE_MIN` min → its rows collapse** to a compact `Cx idle` tag after Claude Code:
+**Codex idle past `CC_USAGE_STALE_MIN` min → its rows collapse** to a compact `Cx idle` in place (where the Codex segment sits — works in one-line / divider layouts too):
 
 ![stale](./assets/stale.png)
 

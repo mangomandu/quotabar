@@ -84,7 +84,7 @@ statusline은 **렌더마다** 도니까 거의 공짜여야 합니다. quotabar
 
 ![wide](./assets/wide.png)
 
-**Codex가 `CC_USAGE_STALE_MIN`분 넘게 idle → 행이 접힘** (CC 뒤에 `Cx idle` 한 토막):
+**Codex가 `CC_USAGE_STALE_MIN`분 넘게 idle → 행이 접힘** (`Cx idle` 한 토막을 Codex 자리에 제자리로 — 한 줄·구분선 배치에서도 동작):
 
 ![stale](./assets/stale.png)
 
