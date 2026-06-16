@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cc-usage-statusline — Claude Code statusline
+# quotabar v1.0.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
