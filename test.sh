@@ -2,7 +2,8 @@
 # quotabar test suite — feeds crafted JSON to statusline.sh and checks output.
 # Run:  bash test.sh        (needs bash + node)
 SL="$(cd "$(dirname "$0")" && pwd)/statusline.sh"
-TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+TMP="$(mktemp -d)" || { echo "cannot create temp dir (read-only FS?)"; exit 1; }
+trap 'rm -rf "$TMP"' EXIT
 pass=0; fail=0
 G=$'\033[32m'; RED=$'\033[31m'; Z=$'\033[0m'
 ok(){  pass=$((pass+1)); printf "  ${G}PASS${Z} %s\n" "$1"; }
@@ -91,6 +92,66 @@ crun(){ env XDG_CACHE_HOME="$CDIR" CC_USAGE_CACHE_TTL=5 CC_USAGE_CONFIG=/dev/nul
 printf '%s' '{"session_id":"q"}' | crun >/dev/null
 o=$(printf '%s' '{"session_id":"q","rate_limits":{"five_hour":{"used_percentage":12,"resets_at":'$FUT'}}}' | crun)
 has "12%" "$o" && ok "empty output not cached -> normalizes instantly within TTL" || bad "empty cached" "$o"
+
+# update notifier (opt-in). default off: no upgrade marker.
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h)
+{ ! has "⬆" "$o"; } && ok "update off (default) -> no ⬆ marker" || bad "update default" "$o"
+
+# update available flag -> shows '⬆ vX' marker
+UDIR="$TMP/upd"; rm -rf "$UDIR"; mkdir -p "$UDIR/quotabar"
+printf '%s\n' "$(date +%s)" > "$UDIR/quotabar/.update-check"   # recent -> no background check
+printf '9.9.9\n' > "$UDIR/quotabar/.update-available"
+o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$UDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL")
+has "⬆ v9.9.9" "$o" && ok "update available -> shows '⬆ v9.9.9'" || bad "update marker" "$o"
+
+# regression: a recent .update-check WITHOUT trailing newline must still throttle
+# (read returns 1 on no-newline EOF; a bad '|| _ul=0' would refire every render and rewrite the file).
+TDIR="$TMP/throttle"; rm -rf "$TDIR"; mkdir -p "$TDIR/quotabar"
+stamp="$(date +%s)"; printf '%s' "$stamp" > "$TDIR/quotabar/.update-check"   # NO newline, recent
+printf '%s' "$CC" | env XDG_CACHE_HOME="$TDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL" >/dev/null
+after="$(cat "$TDIR/quotabar/.update-check")"
+[ "$after" = "$stamp" ] && ok "throttle holds on no-newline timestamp (no per-render refire)" || bad "throttle refire" "got:|$after| want:|$stamp|"
+
+# CC_USAGE_UPDATE_DAYS controls the interval (hermetic: fake curl on PATH so no network fires).
+FB="$TMP/fakebin"; mkdir -p "$FB"; printf '#!/bin/sh\nexit 1\n' > "$FB/curl"; chmod +x "$FB/curl"
+krun(){ env PATH="$FB:$PATH" XDG_CACHE_HOME="$KDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on "$@" bash "$SL"; }
+# stamp 3 days old; checking-on-fire rewrites .update-check to ~now (parent does this synchronously before the bg curl)
+KDIR="$TMP/days7"; rm -rf "$KDIR"; mkdir -p "$KDIR/quotabar"; old=$(( $(date +%s) - 3*86400 )); printf '%s\n' "$old" > "$KDIR/quotabar/.update-check"
+printf '%s' "$CC" | krun CC_USAGE_UPDATE_DAYS=7 >/dev/null
+[ "$(cat "$KDIR/quotabar/.update-check")" = "$old" ] && ok "UPDATE_DAYS=7 -> 3-day-old check does NOT refire" || bad "days7 refire" "rewrote"
+KDIR="$TMP/days1"; rm -rf "$KDIR"; mkdir -p "$KDIR/quotabar"; printf '%s\n' "$old" > "$KDIR/quotabar/.update-check"
+printf '%s' "$CC" | krun CC_USAGE_UPDATE_DAYS=1 >/dev/null
+[ "$(cat "$KDIR/quotabar/.update-check")" != "$old" ] && ok "UPDATE_DAYS=1 -> 3-day-old check DOES refire" || bad "days1 no refire" "unchanged"
+
+# false-like values must NOT enable the notifier (only explicit truthy on/1/true/yes)
+FUDIR="$TMP/falseupd"; rm -rf "$FUDIR"; mkdir -p "$FUDIR/quotabar"
+printf '%s\n' "$(date +%s)" > "$FUDIR/quotabar/.update-check"; printf '9.9.9\n' > "$FUDIR/quotabar/.update-available"
+o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$FUDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=false bash "$SL")
+{ ! has "⬆" "$o"; } && ok "CC_USAGE_UPDATE=false -> treated as off (no ⬆)" || bad "false enables" "$o"
+
+# CC_USAGE_DEBUG must not flag the new update keys as unknown typos (recent stamp -> no network)
+DDIR="$TMP/dbg"; rm -rf "$DDIR"; mkdir -p "$DDIR/quotabar"; printf '%s\n' "$(date +%s)" > "$DDIR/quotabar/.update-check"
+e=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$DDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_DEBUG=1 CC_USAGE_UPDATE=on CC_USAGE_UPDATE_DAYS=7 bash "$SL" 2>&1 >/dev/null)
+{ ! has "unknown CC_USAGE_* keys" "$e"; } && ok "debug: update keys not flagged as unknown" || bad "debug unknown keys" "$e"
+
+# unwritable cache must not leak shell redirection errors to stderr (read-only cache dir)
+RODIR="$TMP/ro"; rm -rf "$RODIR"; mkdir -p "$RODIR/quotabar"; chmod 555 "$RODIR/quotabar"
+e=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$RODIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL" 2>&1 >/dev/null)
+chmod 755 "$RODIR/quotabar" 2>/dev/null
+{ ! has "Permission denied" "$e" && ! has "Read-only" "$e"; } && ok "unwritable cache -> no stderr leak from update stamp" || bad "stderr leak" "$e"
+
+# a stale .update-available equal to the running version must NOT show ⬆ (and gets cleared)
+VDIR="$TMP/staleupd"; rm -rf "$VDIR"; mkdir -p "$VDIR/quotabar"
+selfver=$(sed -n 's/^VER="\([0-9.]*\)".*/\1/p' "$SL")
+printf '%s\n' "$(date +%s)" > "$VDIR/quotabar/.update-check"; printf '%s\n' "$selfver" > "$VDIR/quotabar/.update-available"
+o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$VDIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL")
+{ ! has "⬆" "$o" && [ ! -f "$VDIR/quotabar/.update-available" ]; } && ok "stale update marker (== current version) hidden and cleared" || bad "stale marker shown" "$o"
+
+# an OLDER cached version than the running one must NOT show (no downgrade prompt)
+ODIR="$TMP/oldupd"; rm -rf "$ODIR"; mkdir -p "$ODIR/quotabar"
+printf '%s\n' "$(date +%s)" > "$ODIR/quotabar/.update-check"; printf '0.0.1\n' > "$ODIR/quotabar/.update-available"
+o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$ODIR" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h NO_COLOR=1 CC_USAGE_UPDATE=on bash "$SL")
+{ ! has "⬆" "$o"; } && ok "older cached version -> no downgrade ⬆ prompt" || bad "downgrade shown" "$o"
 
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"

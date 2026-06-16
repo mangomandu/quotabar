@@ -176,14 +176,24 @@ Before settling we weighed two screenshot-sampled candidates — a blue **eyedro
 | `CC_USAGE_STALE_MIN` | collapse Codex to `Cx idle` after N idle minutes (default 30; `0` = always full) |
 | `CC_USAGE_CODEX_DIR` | where to read Codex sessions (default `~/.codex/sessions`) |
 | `CC_USAGE_CACHE_TTL` | reuse output for N seconds per session (default 2; `0` = always recompute) |
+| `CC_USAGE_UPDATE=on` | opt-in update notifier (default **off**): a detached background check, at most once per `CC_USAGE_UPDATE_DAYS`, appends `⬆ vX.Y.Z` when a newer version exists |
+| `CC_USAGE_UPDATE_DAYS` | how often that check may run, in days (default 7). Render cost is the same at any interval — it's just a timestamp read; only the background request frequency changes |
 
 See [`cc-usage.conf`](./cc-usage.conf) for the annotated template.
+
+**Updating** — re-run the [installer](#install) any time (it overwrites `statusline.sh`, keeps your config), or run `bash ~/.claude/hooks/statusline.sh --update` for a one-shot self-update. With `CC_USAGE_UPDATE=on` you'll see a `⬆` nudge in the bar when a new version lands. quotabar makes **no per-render network calls** — even the notifier check is throttled and detached, never on the hot path (unlike `npx pkg@latest` setups that re-resolve every render).
 
 ---
 
 ## How it works
 
-On each render Claude Code pipes a JSON blob to the command. quotabar reads `rate_limits` (`five_hour` / `seven_day`, with `used_percentage` + epoch `resets_at`), plus `context_window`, `cost`, `model`. For Codex it finds the newest `~/.codex/sessions/**/rollout-*.jsonl` by mtime and reads just the tail (growing 256 KB → 4 MB) to pull the last `rate_limits` event. It reads `COLUMNS` to pick the layout, then caches the result per `(session, layout)`. Everything happens in **one short-lived `node` process** (zero on a cache hit) — no `ls`/`grep`/`tail` subprocesses, no network.
+**quotabar makes no network calls — it never fetches your usage. It only *displays* data the CLIs already have.**
+
+1. **Claude Code limits** — on every render, Claude Code pipes a JSON blob to the statusline command on **stdin**. That blob already carries your usage limits (`rate_limits.five_hour` / `seven_day`, each with `used_percentage` and an epoch `resets_at`), plus `context_window`, `cost`, and `model`. quotabar reads those values straight off stdin and draws the bars — it does not call any API. So the numbers are exactly as fresh as Claude Code's own. (Consequence: before the first message of a session Claude Code hasn't populated `rate_limits` yet, so the Claude Code bars are simply empty until you send something.)
+2. **Codex limits** — read from **disk**: quotabar finds the newest `~/.codex/sessions/**/rollout-*.jsonl` by mtime and reads just the tail (growing 256 KB → 4 MB) to pull the last `rate_limits` event Codex wrote.
+3. **Layout & cache** — it reads `COLUMNS` (handed in by Claude Code) to pick the layout, then caches the rendered output per `(session, layout)`.
+
+Everything happens in **one short-lived `node` process** (zero on a cache hit) — no `ls`/`grep`/`tail` subprocesses, **no network, no daemon**.
 
 ## Notes & limitations
 
@@ -193,7 +203,7 @@ On each render Claude Code pipes a JSON blob to the command. quotabar reads `rat
 
 ## Development
 
-Run `bash test.sh` for the test suite (18 assertions; needs `bash` + `node`). For diagnostics, `CC_USAGE_DEBUG=1 … bash statusline.sh` (or `--debug`) prints the parsed data, resolved config, chosen Codex file + freshness, and any unknown `CC_USAGE_*` keys (typos) to stderr.
+Run `bash test.sh` for the test suite (31 assertions; needs `bash` + `node`). For diagnostics, `CC_USAGE_DEBUG=1 … bash statusline.sh` (or `--debug`) prints the parsed data, resolved config, chosen Codex file + freshness, and any unknown `CC_USAGE_*` keys (typos) to stderr.
 
 ## License
 

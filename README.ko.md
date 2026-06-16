@@ -176,14 +176,24 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: Claude Code 컴팩팅 블루 #5769f7
 | `CC_USAGE_STALE_MIN` | Codex가 N분 유휴면 `Cx idle`로 접음 (기본 30; `0`=항상 풀) |
 | `CC_USAGE_CODEX_DIR` | Codex 세션 읽을 경로 (기본 `~/.codex/sessions`) |
 | `CC_USAGE_CACHE_TTL` | 세션별 출력 N초 재사용 (기본 2; `0`=항상 즉시 계산) |
+| `CC_USAGE_UPDATE=on` | opt-in 업데이트 알림 (기본 **off**): `CC_USAGE_UPDATE_DAYS`마다 최대 1회 detached 백그라운드로 확인 후 새 버전이면 `⬆ vX.Y.Z` 표시 |
+| `CC_USAGE_UPDATE_DAYS` | 위 확인 간격(일, 기본 7). 렌더 비용은 간격과 무관(타임스탬프 1회 읽기뿐) — 바뀌는 건 백그라운드 요청 빈도뿐 |
 
 주석 달린 템플릿은 [`cc-usage.conf`](./cc-usage.conf) 참고.
+
+**업데이트** — 아무 때나 [설치 명령](#설치)을 다시 실행하면 됨(`statusline.sh`만 덮어쓰고 설정은 유지), 또는 `bash ~/.claude/hooks/statusline.sh --update`로 1회 자가 갱신. `CC_USAGE_UPDATE=on`이면 새 버전 나올 때 바에 `⬆`가 떠서 알려줌. quotabar는 **렌더당 네트워크 호출이 0** — 알림 확인조차 throttle + detached라 핫패스엔 절대 안 올라옴(매 렌더 재해석하는 `npx pkg@latest`와 대조).
 
 ---
 
 ## 작동 방식
 
-렌더할 때마다 Claude Code가 JSON을 stdin으로 줍니다. quotabar는 `rate_limits`(`five_hour`/`seven_day`, `used_percentage` + epoch `resets_at`)와 `context_window`·`cost`·`model`을 읽음. Codex는 `~/.codex/sessions/**/rollout-*.jsonl` 중 mtime 최신을 찾아 **끝부분만**(256KB→최대 4MB) 읽어 마지막 `rate_limits`를 가져옴. `COLUMNS`로 레이아웃을 고르고 `(세션, 레이아웃)`별로 캐시. 전부 **짧게 도는 `node` 하나** 안에서(캐시 적중 시 0개) — `ls`/`grep`/`tail` 서브셸도, 네트워크도 없음.
+**quotabar는 네트워크 호출을 전혀 안 합니다 — 사용량을 어디서 "받아오는" 게 아니라, CLI가 이미 가진 데이터를 *표시*만 합니다.**
+
+1. **Claude Code 한도** — 렌더할 때마다 Claude Code가 JSON 한 덩어리를 statusline 명령의 **stdin**으로 넘겨줍니다. 그 안에 이미 사용량 한도(`rate_limits.five_hour`/`seven_day`, 각각 `used_percentage` + epoch `resets_at`)와 `context_window`·`cost`·`model`이 들어 있음. quotabar는 그 값을 stdin에서 그대로 읽어 막대로 그릴 뿐, API를 직접 호출하지 않습니다. 그래서 숫자는 딱 Claude Code 자신의 데이터만큼만 최신입니다. (그 결과: 세션의 첫 메시지 전에는 Claude Code가 아직 `rate_limits`를 안 채워서, 뭔가 보내기 전까지 Claude Code 막대는 그냥 비어 있습니다.)
+2. **Codex 한도** — **디스크**에서 읽음: `~/.codex/sessions/**/rollout-*.jsonl` 중 mtime 최신을 찾아 **끝부분만**(256KB→최대 4MB) 읽어 Codex가 마지막으로 쓴 `rate_limits`를 가져옵니다.
+3. **레이아웃 & 캐시** — Claude Code가 넘겨주는 `COLUMNS`로 레이아웃을 고르고, 렌더 결과를 `(세션, 레이아웃)`별로 캐시.
+
+전부 **짧게 도는 `node` 하나** 안에서(캐시 적중 시 0개) — `ls`/`grep`/`tail` 서브셸도, **네트워크도, 데몬도 없음**.
 
 ## 참고 / 한계
 
@@ -193,7 +203,7 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: Claude Code 컴팩팅 블루 #5769f7
 
 ## 개발
 
-`bash test.sh`로 테스트(어설션 18개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
+`bash test.sh`로 테스트(어설션 31개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
 
 ## 라이선스
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.0
+
+**Added**
+- Optional update notifier (`CC_USAGE_UPDATE=on`, default **off**). When on, quotabar
+  checks GitHub for a newer version at most once every `CC_USAGE_UPDATE_DAYS` days
+  (default **7**) — in a detached background process that never blocks the render —
+  and appends a compact `⬆ vX.Y.Z` marker when one is available.
+- `statusline.sh --update` — manual one-shot self-update (downloads the latest over
+  itself; works any time, no notifier needed).
+
+**Performance (Verdikt-gated)**
+- Default (off): **+0.05 ms** vs v1.0.2 — effectively zero; non-users pay nothing.
+- Turned on: **+0.13 ms** steady-state render (within a 1.0 ms non-inferiority margin
+  on 100% of 80 sealed-holdout paired renders). The hot path is a single timestamp
+  read — render cost is independent of the check interval; only one detached request
+  fires per interval. A first cut accidentally refired the background check every
+  render (a `read` no-newline-EOF gotcha); Verdikt caught it (+1.9 ms → FAIL) before ship.
+- Test suite at 31 assertions (incl. throttle, interval, and truthy-gate regression guards).
+
 ## v1.0.2
 
 **Fixed**

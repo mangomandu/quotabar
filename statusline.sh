@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.0.2 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.1.0 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -26,12 +26,44 @@
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
 #   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
+#   CC_USAGE_UPDATE    on 설정 시 기본 7일에 1회 백그라운드로 새 버전 확인 후 막대 끝에 '⬆ vX' 표시. 기본 off.
+#                      렌더는 안 막음(detached). 수동 갱신은 'statusline.sh --update'(언제든, 네트워크 필요).
+#   CC_USAGE_UPDATE_DAYS  위 확인 간격(일). 기본 7. 렌더 비용은 간격과 무관(파일 1회 읽기뿐).
 #   CC_USAGE_DEBUG     설정 시(또는 첫 인자 --debug) 파싱·설정·codex 진단을 stderr로 출력
 #   NO_COLOR           비어있지 않게 설정 시 색상 비활성(no-color.org 관례)
 #
 # 위 변수들은 설정 파일 ~/.claude/cc-usage.conf 에 "KEY=value" 한 줄씩 적어두면
 # 자동으로 적용됩니다(JSON 편집 불필요). 환경변수가 있으면 환경변수가 우선.
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
+
+VER="1.1.0"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
+
+# 버전 비교: $1 > $2 이면 0. 점 구분 숫자, fork·GNU(sort -V) 비의존(macOS/BSD 안전). 업데이트 알림 표시에만 씀.
+_qb_gt() {
+  local i n; local -a A B
+  IFS=. read -ra A <<<"$1"; IFS=. read -ra B <<<"$2"
+  n=${#A[@]}; [ "${#B[@]}" -gt "$n" ] && n=${#B[@]}
+  for ((i=0; i<n; i++)); do
+    local a=${A[i]:-0} b=${B[i]:-0}
+    case "$a" in *[!0-9]*) a=0;; esac; case "$b" in *[!0-9]*) b=0;; esac
+    [ "$((10#$a))" -gt "$((10#$b))" ] && return 0
+    [ "$((10#$a))" -lt "$((10#$b))" ] && return 1
+  done
+  return 1
+}
+
+# 수동 업데이트: 최신 statusline.sh를 받아 자기 자신을 덮어씀(언제든, node 불필요)
+if [ "${1:-}" = "--update" ]; then
+  _self="${BASH_SOURCE[0]:-$0}"; _tmp="$(mktemp 2>/dev/null)" || { echo "✗ mktemp failed"; exit 1; }
+  if curl -fsSL "https://raw.githubusercontent.com/mangomandu/quotabar/main/statusline.sh" -o "$_tmp" 2>/dev/null && [ -s "$_tmp" ]; then
+    chmod +x "$_tmp" 2>/dev/null
+    if mv "$_tmp" "$_self" 2>/dev/null; then
+      rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/quotabar/.update-available" 2>/dev/null
+      echo "✓ quotabar updated → $_self"; exit 0
+    fi
+  fi
+  rm -f "$_tmp" 2>/dev/null; echo "✗ quotabar update failed (network or permissions)"; exit 1
+fi
 
 command -v node >/dev/null 2>&1 || { printf '⏳ cc-usage: node not found'; exit 0; }
 
@@ -66,12 +98,51 @@ wat="${CC_USAGE_WIDE_AT:-120}"; case "$wat" in ''|*[!0-9]*) wat=120;; esac
 lw=n
 if [ -n "${CC_USAGE_SEGMENTS_WIDE:-}" ] && [ "$cols" -ge "$wat" ]; then export CC_USAGE_SEGMENTS="$CC_USAGE_SEGMENTS_WIDE"; lw=w; fi
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid-$lw"   # 폭(레이아웃)별 캐시
+
+# --- 업데이트 알림(opt-in: CC_USAGE_UPDATE=on). 기본 7일에 1회만 백그라운드로 버전 확인 — 렌더는 안 막음(detached).
+#     간격은 CC_USAGE_UPDATE_DAYS로 조정. 기본(off)일 땐 문자열 비교 1번이 전부.
+#     on이어도 핫패스는 EPOCHSECONDS(빌트인)+파일 1회 읽기, fork 0 — 간격이 길든 짧든 렌더 비용은 동일.
+upd_hint=""; _uon=0
+# 명시적 truthy 값일 때만 켬 — false/0/no/off/오타는 네트워크 안 건드림(Codex 리뷰 P2). case라 fork 0 + bash3 안전.
+case "${CC_USAGE_UPDATE:-}" in on|On|ON|1|true|True|TRUE|yes|Yes|YES) _uon=1;; esac
+if [ "$_uon" = 1 ]; then
+  _unow="${EPOCHSECONDS:-0}"; [ "$_unow" = 0 ] && _unow=$(date +%s 2>/dev/null || echo 0)
+  _ud="${CC_USAGE_UPDATE_DAYS:-7}"; case "$_ud" in ''|*[!0-9]*) _ud=7;; esac; [ "$_ud" -lt 1 ] 2>/dev/null && _ud=7
+  _uint=$(( _ud * 86400 ))                       # 확인 간격(초). 기본 7일
+  _uf="$cache_dir/.update-check"; _ul=0
+  # read는 개행 없이 EOF면 값은 넣고도 exit 1을 냄 → '|| _ul=0' 쓰면 방금 읽은 값을 도로 0으로 만들어
+  # throttle이 매번 발동(백그라운드 fork)함. _ul은 이미 0으로 초기화돼 있으니 read 실패는 무시하고, 값 검증은 아래 case로.
+  [ -f "$_uf" ] && IFS= read -r _ul < "$_uf" 2>/dev/null
+  case "$_ul" in ''|*[!0-9]*) _ul=0;; esac
+  # 스탬프 기록에 성공했을 때만 백그라운드 확인을 띄움 — 기록 실패(읽기전용 캐시 등)면 throttle을 못 박으니
+  # 아예 확인을 건너뛴다. 그래야 매 렌더 재발동(네트워크 fork 반복)을 막음. (Codex 리뷰 P2)
+  # printf의 '2>/dev/null'을 '>'보다 먼저 둠: 리다이렉션은 좌→우 처리라, 이 순서여야 파일 열기 실패
+  # (읽기전용 캐시 등)의 bash 에러가 stderr로 안 샌다. 실패 시 종료코드는 비0 → &&로 백그라운드도 안 뜸. (Codex P3)
+  if [ "$(( _unow - _ul ))" -gt "$_uint" ] && mkdir -p "$cache_dir" 2>/dev/null && printf '%s\n' "$_unow" 2>/dev/null > "$_uf"; then
+    ( _l=$(curl -fsSL --max-time 5 "https://raw.githubusercontent.com/mangomandu/quotabar/main/statusline.sh" 2>/dev/null \
+            | sed -n 's/^# quotabar v\([0-9.]*\).*/\1/p' | head -1)
+      if [ -n "$_l" ] && [ "$_l" != "$VER" ]; then printf '%s\n' "$_l" > "$cache_dir/.update-available" 2>/dev/null
+      else rm -f "$cache_dir/.update-available" 2>/dev/null; fi
+    ) </dev/null >/dev/null 2>&1 &
+  fi
+  # 캐시된 가용 버전이 현재 VER '보다 최신'일 때만 표시(_qb_gt). 같거나 빈 값이면 낡은 플래그 제거 —
+  # 안 그러면 설치 경로로 이미 갱신된 자기 버전을, 또는 더 옛 캐시값을 'update 있음'으로 잘못 표시함. (Codex 리뷰 P2)
+  if [ -f "$cache_dir/.update-available" ]; then
+    _uv=""; IFS= read -r _uv < "$cache_dir/.update-available" 2>/dev/null
+    if [ -z "$_uv" ] || [ "$_uv" = "$VER" ]; then
+      rm -f "$cache_dir/.update-available" 2>/dev/null
+    elif _qb_gt "$_uv" "$VER"; then
+      upd_hint="  ⬆ v$_uv"        # _uv > VER (최신)일 때만 표시 — 다운그레이드 프롬프트 방지
+    fi
+  fi
+fi
+
 if [ "$ttl" -gt 0 ] && [ -z "$CC_USAGE_DEBUG" ] && [ -f "$cache.o" ] && [ -f "$cache.t" ] && [ ! "$conf" -nt "$cache.t" ]; then
   IFS= read -r _ts < "$cache.t" 2>/dev/null || _ts=0
   case "$_ts" in ''|*[!0-9]*) _ts=0;; esac
   _now=$(date +%s 2>/dev/null || echo 0)
   if [ "$(( _now - _ts ))" -ge 0 ] && [ "$(( _now - _ts ))" -lt "$ttl" ]; then
-    cat "$cache.o"; exit 0
+    cat "$cache.o"; printf '%s' "$upd_hint"; exit 0
   fi
 fi
 
@@ -250,7 +321,7 @@ if(codexStale&&cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
 if(env.CC_USAGE_DEBUG){
-  const KNOWN=["SEGMENTS","SEGMENTS_WIDE","WIDE_AT","RESET","STYLE","BARS","WARN","CRIT","THRESHOLD","CODEX_DIR","CACHE_TTL","STALE_MIN","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
+  const KNOWN=["SEGMENTS","SEGMENTS_WIDE","WIDE_AT","RESET","STYLE","BARS","WARN","CRIT","THRESHOLD","CODEX_DIR","CACHE_TTL","STALE_MIN","UPDATE","UPDATE_DAYS","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
   const unknown=Object.keys(env).filter(k=>k.indexOf("CC_USAGE_")===0&&KNOWN.indexOf(k)<0);
   const pc=o=>o&&o.used_percentage!=null?o.used_percentage+"%":"-";
   const px=o=>o&&o.used_percent!=null?o.used_percent+"%":"-";
@@ -265,7 +336,7 @@ if(env.CC_USAGE_DEBUG){
 }
 process.stdout.write(lines.join("\n"));
 ')
-printf '%s' "$out"
+printf '%s' "$out$upd_hint"   # upd_hint: CC_USAGE_UPDATE=on이고 새 버전 감지됐을 때만, 아니면 빈 문자열
 # 캐시 갱신(실패해도 무시). 빈 출력은 캐시 안 함: 첫 세션(rate_limits 도착 전)의
 # 빈 결과가 TTL 동안 물려 정상화를 지연시키는 걸 막음 → 첫 메시지 직후 즉시 바 표시.
 if [ "$ttl" -gt 0 ] && [ -n "$out" ]; then
