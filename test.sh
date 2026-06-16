@@ -55,11 +55,18 @@ has "Cx 5h" "$o" && ok "STALE_MIN=0 -> never collapses" || bad "stale off" "$o"
 e=$(printf '%s' "$CC" | run CC_USAGE_DEBUG=1 2>&1 >/dev/null)
 { has "[quotabar debug]" "$e" && has "rate_limits:" "$e"; } && ok "--debug dumps diagnostics to stderr" || bad "debug" "$e"
 
-GREEN=$'\033[32m'
-o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h bash "$SL")
-has "$GREEN" "$o" && ok "threshold on (default) -> green bar" || bad "threshold on" "$o"
-o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h CC_USAGE_THRESHOLD=off bash "$SL")
-{ ! has "$GREEN" "$o"; } && ok "threshold=off -> no level color" || bad "threshold off" "$o"
+GREEN=$'\033[32m'; YEL=$'\033[33m'
+o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d bash "$SL")   # 74%
+has "$YEL" "$o" && ok "past WARN -> yellow bar" || bad "warn color" "$o"
+o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h bash "$SL")   # 15%
+{ ! has "$GREEN" "$o" && ! has "$YEL" "$o"; } && ok "below WARN -> neutral bar (no green/yellow)" || bad "low neutral" "$o"
+o=$(printf '%s' "$CC" | env CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=7d CC_USAGE_THRESHOLD=off bash "$SL")
+{ ! has "$YEL" "$o"; } && ok "threshold=off -> no level color" || bad "threshold off" "$o"
+
+rm -rf "$TMP/cxbig"; mkdir -p "$TMP/cxbig/2026/06/16"
+node -e 'const fs=require("fs");const line=JSON.stringify({timestamp:new Date().toISOString(),payload:{rate_limits:{primary:{used_percent:42,resets_at:'$FUT'},secondary:{used_percent:42,resets_at:'$FUT'}}}});const pad=JSON.stringify({payload:{blob:"x".repeat(300000)}});fs.writeFileSync(process.argv[1],line+"\n"+pad+"\n")' "$TMP/cxbig/2026/06/16/rollout-b.jsonl"
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=cx5h CC_USAGE_CODEX_DIR="$TMP/cxbig")
+has "Cx 5h" "$o" && ok "large Codex session (>256KB after) -> rate_limits still found" || bad "codex big file" "$o"
 
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"

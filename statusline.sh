@@ -20,7 +20,7 @@
 #   CC_USAGE_BARS      막대 칸 수(기본 10)
 #   CC_USAGE_WARN      노랑 임계 %(기본 50)
 #   CC_USAGE_CRIT      빨강 임계 %(기본 80)
-#   CC_USAGE_THRESHOLD 막대/% 사용률색(초록/노랑/빨강) on(기본)|off. off여도 태그색은 유지
+#   CC_USAGE_THRESHOLD 막대 경고색 on(기본)|off. 기본 무채색, warn%↑ 노랑·crit%↑ 빨강. %글씨는 항상 흰색
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
 #   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
@@ -72,6 +72,7 @@ out=$(printf '%s' "$IN" | node -e '
 const fs=require("fs");
 let d={};try{d=JSON.parse(fs.readFileSync(0,"utf8"))}catch(e){}
 const rl=d.rate_limits||{};
+const clean=s=>String(s==null?"":s).replace(/[\x00-\x1f\x7f-\x9f]/g,"");  // 터미널 제어문자(ESC 등) 제거 = 인젝션 방지
 
 const env=process.env;
 const cfg={
@@ -79,62 +80,61 @@ const cfg={
         .map(r=>r.split(",").map(s=>s.trim()).filter(Boolean)).filter(r=>r.length),
   reset:env.CC_USAGE_RESET||"relative",
   ascii:(env.CC_USAGE_STYLE||"unicode")==="ascii",
-  width:Math.max(1,parseInt(env.CC_USAGE_BARS||"10",10)||10),
+  width:Math.max(1,Math.min(40,parseInt(env.CC_USAGE_BARS||"10",10)||10)),  // 1~40 칸으로 제한
   warn:parseInt(env.CC_USAGE_WARN||"50",10),
   crit:parseInt(env.CC_USAGE_CRIT||"80",10),
   color:!env.NO_COLOR,
 };
 
-// Codex: cx 세그먼트가 있을 때만 최신 세션 파일 끝부분(≤256KB)에서 마지막 rate_limits 추출.
-// 서브셸(ls/tail/grep) 없이 node 안에서 처리 → 가벼움. primary=5h, secondary=weekly.
+// Codex: cx 세그먼트가 있을 때만, 모든 rollout 중 mtime 최신 파일에서 마지막 rate_limits 추출.
+// 파일 끝에서 점점 키워가며(256KB→최대 4MB) 읽어 큰 세션도 안 놓침. 서브셸 없이 node로.
 let cx={},cxTs=0,codexFile=null;
 if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
   try{
     const root=env.CC_USAGE_CODEX_DIR||require("os").homedir()+"/.codex/sessions";
-    // 사전식(파일명=시간순)으로 최신 연/월/일 디렉토리 우선 → 그 날의 rollout 중 mtime 최신.
-    // 전체 파일 stat 대신 가장 최근 날짜만 봄(#3). 비어 있으면 다음 후보로 백트랙.
-    const find=(dir,depth)=>{
-      let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return null}
-      if(depth===3){
-        let best=null,nm=-1;
-        for(const e of ents)if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
-          let m;try{m=fs.statSync(dir+"/"+e.name).mtimeMs}catch(_){continue}
-          if(m>nm){nm=m;best=dir+"/"+e.name}
-        }
-        return best;
-      }
-      const subs=ents.filter(e=>e.isDirectory()).map(e=>e.name).sort((a,b)=>a<b?1:a>b?-1:0);
-      for(const name of subs){const r=find(dir+"/"+name,depth+1);if(r)return r}
-      return null;
+    let nm=-1;  // 전 파일 mtime 최신 선택(가장 정확). 캐시가 호출 빈도를 낮춰줌.
+    const walk=(dir,depth)=>{
+      let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return}
+      for(const e of ents){const p=dir+"/"+e.name;
+        if(depth<3){if(e.isDirectory())walk(p,depth+1)}
+        else if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
+          let m;try{m=fs.statSync(p).mtimeMs}catch(_){continue}
+          if(m>nm){nm=m;codexFile=p}}}
     };
-    codexFile=find(root,0);
+    walk(root,0);
     if(codexFile){
-      const fd=fs.openSync(codexFile,"r"),sz=fs.fstatSync(fd).size,n=Math.min(sz,262144);
-      const b=Buffer.alloc(n);fs.readSync(fd,b,0,n,sz-n);fs.closeSync(fd);
-      const arr=b.toString("utf8").split("\n");
-      for(let i=arr.length-1;i>=0;i--){
-        if(arr[i].includes("\"rate_limits\"")){
-          try{const pj=JSON.parse(arr[i]);cx=pj.payload.rate_limits||{};cxTs=Date.parse(pj.timestamp)||0}catch(_){}
-          if(Object.keys(cx).length)break;
+      const fd=fs.openSync(codexFile,"r"),sz=fs.fstatSync(fd).size;
+      for(let chunk=262144;;chunk*=4){
+        const n=Math.min(sz,chunk);
+        const b=Buffer.alloc(n);fs.readSync(fd,b,0,n,sz-n);
+        const arr=b.toString("utf8").split("\n");
+        const start=(n<sz)?1:0;   // 전체를 안 읽었으면 잘린 첫 줄은 버림
+        for(let i=arr.length-1;i>=start;i--){
+          if(arr[i].includes("\"rate_limits\"")){
+            try{const pj=JSON.parse(arr[i]);if(pj.payload&&pj.payload.rate_limits){cx=pj.payload.rate_limits;cxTs=Date.parse(pj.timestamp)||0}}catch(_){}
+            if(Object.keys(cx).length)break;
+          }
         }
+        if(Object.keys(cx).length||n>=sz||chunk>=4194304)break;
       }
+      fs.closeSync(fd);
     }
   }catch(e){}
 }
 const cxNorm=o=>o?{used_percentage:o.used_percent,resets_at:o.resets_at}:null;
 // 라벨 태그: 공급자(cc/cx) + 윈도우(5h/7d) + ctx. 기본은 글자, 무엇이든(이모지 포함) 교체 가능.
 const tag={
-  cc:  env.CC_USAGE_TAG_CC  ?? "CC",
-  cx:  env.CC_USAGE_TAG_CX  ?? "Cx",
-  "5h":env.CC_USAGE_TAG_5H  ?? "5h",
-  "7d":env.CC_USAGE_TAG_7D  ?? "7d",
-  ctx: env.CC_USAGE_TAG_CTX ?? "ctx",
+  cc:  clean(env.CC_USAGE_TAG_CC  ?? "CC"),
+  cx:  clean(env.CC_USAGE_TAG_CX  ?? "Cx"),
+  "5h":clean(env.CC_USAGE_TAG_5H  ?? "5h"),
+  "7d":clean(env.CC_USAGE_TAG_7D  ?? "7d"),
+  ctx: clean(env.CC_USAGE_TAG_CTX ?? "ctx"),
 };
 
 const C=cfg.color?{R:"\x1b[0m",DIM:"\x1b[2m",B:"\x1b[1m",g:"\x1b[32m",y:"\x1b[33m",r:"\x1b[31m"}
                  :{R:"",DIM:"",B:"",g:"",y:"",r:""};
-const thresh=!/^(off|0|false|no)$/i.test(env.CC_USAGE_THRESHOLD||"on"); // 사용률색(초록/노랑/빨강) on|off
-const col=p=>thresh?(p>=cfg.crit?C.r:p>=cfg.warn?C.y:C.g):"";          // off면 무채색(태그색은 별개)
+const thresh=!/^(off|0|false|no)$/i.test(env.CC_USAGE_THRESHOLD||"on"); // 막대 경고색 on|off
+const col=p=>thresh?(p>=cfg.crit?C.r:p>=cfg.warn?C.y:""):"";           // 기본 무채색, warn%↑ 노랑, crit%↑ 빨강만
 const G=cfg.ascii?{fill:"#",empty:"-"}:{fill:"▰",empty:"▱"};
 // 태그 색(공급자 라벨용): 색 이름 또는 256색 번호 → ANSI. 컬러 이모지(🟧)엔 영향 없음, 단색 기호(✿☁)에 색.
 const NAMED={black:0,red:196,green:46,yellow:226,blue:39,magenta:201,cyan:51,white:255,
@@ -187,7 +187,7 @@ const SEG={
   "cx5h": {prov:"cx", win:"5h", type:"limit", get:()=>cxNorm(cx.primary)},
   "cx7d": {prov:"cx", win:"7d", type:"limit", get:()=>cxNorm(cx.secondary)},
   "ctx":  {tagKey:"ctx", type:"pct",  get:()=>d.context_window},
-  "model":{type:"text", get:()=>d.model&&d.model.display_name},
+  "model":{type:"text", get:()=>clean(d.model&&d.model.display_name)||null},
   "cost": {type:"text", get:()=>{const c=Number(d.cost&&d.cost.total_cost_usd);return Number.isFinite(c)?"$"+c.toFixed(2):null;}},
 };
 // 머리말 = 공급자태그 + 윈도우태그 (예: 기본 "CC 5h", 커스텀 "🟧 ⏳"). ctx는 단일 태그. model/cost는 없음.
@@ -210,8 +210,8 @@ const render=(key,showProv)=>{
   if(!o)return null;
   const raw=Number(o.used_percentage);
   if(!Number.isFinite(raw))return null;   // 숫자 아니면 NaN% 대신 항목 숨김
-  const p=Math.round(raw);
-  let out=(h?h+"  ":"")+bar(p)+"  "+col(p)+C.B+String(p).padStart(3)+"%"+C.R;
+  const p=Math.max(0,Math.min(100,Math.round(raw)));   // 0~100 클램프
+  let out=(h?h+"  ":"")+bar(p)+"  "+C.B+String(p).padStart(3)+"%"+C.R;   // 막대=사용률색 / %글씨=항상 흰색(bold)
   if(s.type==="limit"){
     const t=ms(o), expired=t!=null&&Date.now()>=t;   // 윈도우가 이미 리셋됨 → 카운트다운 무의미
     if(!expired){const rs=resetStr(o);if(rs)out+="  "+C.DIM+"· "+rs+C.R;}
@@ -246,11 +246,11 @@ if(env.CC_USAGE_DEBUG){
   const E=process.stderr;
   E.write("[quotabar debug]\n");
   E.write("  rate_limits: "+(d.rate_limits?"five_hour="+pc(rl.five_hour)+" seven_day="+pc(rl.seven_day):"MISSING from stdin")+"\n");
-  E.write("  ctx="+pc(d.context_window)+" cost="+(d.cost&&d.cost.total_cost_usd!=null?"$"+d.cost.total_cost_usd:"-")+" model="+((d.model&&d.model.display_name)||"-")+"\n");
+  E.write("  ctx="+pc(d.context_window)+" cost="+(d.cost&&d.cost.total_cost_usd!=null?"$"+d.cost.total_cost_usd:"-")+" model="+(clean(d.model&&d.model.display_name)||"-")+"\n");
   E.write("  config: segments="+JSON.stringify(cfg.rows)+" reset="+cfg.reset+" style="+(cfg.ascii?"ascii":"unicode")+" bars="+cfg.width+" warn="+cfg.warn+" crit="+cfg.crit+" color="+(cfg.color?"on":"off")+"\n");
   E.write("  tags: cc="+tag.cc+" cx="+tag.cx+" 5h="+tag["5h"]+" 7d="+tag["7d"]+" ctx="+tag.ctx+"\n");
-  E.write("  codex: file="+(codexFile||"(none)")+" staleMin="+staleMin+" stale="+codexStale+" ageMin="+(cxTs?Math.floor((Date.now()-cxTs)/60000):"-")+" primary="+px(cx.primary)+" secondary="+px(cx.secondary)+"\n");
-  if(unknown.length)E.write("  WARNING unknown CC_USAGE_* keys (typo?): "+unknown.join(", ")+"\n");
+  E.write("  codex: file="+(clean(codexFile)||"(none)")+" staleMin="+staleMin+" stale="+codexStale+" ageMin="+(cxTs?Math.floor((Date.now()-cxTs)/60000):"-")+" primary="+px(cx.primary)+" secondary="+px(cx.secondary)+"\n");
+  if(unknown.length)E.write("  WARNING unknown CC_USAGE_* keys (typo?): "+unknown.map(clean).join(", ")+"\n");
 }
 process.stdout.write(lines.join("\n"));
 ')
