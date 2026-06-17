@@ -110,6 +110,8 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
 
 quotabar는 `.codex-plugin/plugin.json`을 포함하므로 GitHub에서 설치했을 때 Codex가 저장소를 플러그인으로 인식하고 프로젝트 카드를 표시할 수 있습니다. 이 플러그인 메타데이터는 발견과 안내용입니다. 실제 Claude Code statusline 연결은 위 설치 명령을 실행해야 합니다.
 
+Codex 플러그인에는 Codex 안에서 설치, 업데이트, 문제 해결, 커스터마이즈를 안내하는 `quotabar` skill도 포함됩니다.
+
 ### OS별
 
 | | 할 일 |

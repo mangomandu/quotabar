@@ -16,6 +16,7 @@
     "usage-limits",
     "quota"
   ],
+  "skills": "./skills/",
   "interface": {
     "displayName": "quotabar",
     "shortDescription": "Show Claude Code and Codex usage limits in your statusline.",
@@ -23,7 +24,9 @@
     "developerName": "mangomandu",
     "category": "Productivity",
     "capabilities": [
-      "Read"
+      "Interactive",
+      "Read",
+      "Write"
     ],
     "websiteURL": "https://github.com/mangomandu/quotabar",
     "brandColor": "#5769F7",
