@@ -299,6 +299,7 @@ const head=(s,showProv)=>{
   return "";
 };
 let cxIdleShown=false;   // Codex 스테일 시 Cx idle 토큰은 (여러 cx 세그 중) 첫 자리에만 인플레이스로 1회
+let cxNaShown=false;     // Codex가 rate_limits 이벤트는 쓰지만 primary/secondary가 null이면 Cx n/a를 1회 표시
 const render=(key,showProv)=>{
   if(key==="sep"||key==="|")return C.DIM+"│"+C.R;   // 구분선(예: 같은 줄에서 CC│Cx)
   const s=SEG[key];if(!s)return null;
@@ -325,7 +326,14 @@ const render=(key,showProv)=>{
     if(o==="max")return (h?h+" ":"")+grad("max",[203,166,247],[124,58,237])+C.DIM+" effort"+C.R;
     return (h?h+" ":"")+C.DIM+o+" effort"+C.R;
   }
-  if(!o)return null;
+  if(!o){
+    if(s.prov==="cx"&&cxTs>0&&!cxNaShown){
+      cxNaShown=true;
+      const cxt=tag.cx||"Cx";
+      return (provColor.cx?provColor.cx+cxt+C.R:C.DIM+cxt+C.R)+C.DIM+" n/a"+C.R;
+    }
+    return null;
+  }
   const raw=Number(o.used_percentage);
   if(!Number.isFinite(raw))return null;   // 숫자 아니면 NaN% 대신 항목 숨김
   const p=Math.max(0,Math.min(100,Math.round(raw)));   // 0~100 클램프

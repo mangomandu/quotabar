@@ -16,6 +16,8 @@ CC='{"session_id":"t","rate_limits":{"five_hour":{"used_percentage":15,"resets_a
 # fake Codex rollout whose token_count event is $1 minutes old
 fake(){ rm -rf "$TMP/cx"; mkdir -p "$TMP/cx/2026/06/16"
   node -e 'const fs=require("fs");const ts=new Date(Date.now()-(+process.argv[1])*60000).toISOString();fs.writeFileSync(process.argv[2],JSON.stringify({timestamp:ts,type:"event_msg",payload:{rate_limits:{primary:{used_percent:7,resets_at:'$FUT'},secondary:{used_percent:16,resets_at:'$FUT'}}}})+"\n")' "$1" "$TMP/cx/2026/06/16/rollout-z.jsonl"; }
+fake_null(){ rm -rf "$TMP/cxnull"; mkdir -p "$TMP/cxnull/2026/06/16"
+  node -e 'const fs=require("fs");const ts=new Date().toISOString();fs.writeFileSync(process.argv[1],JSON.stringify({timestamp:ts,type:"event_msg",payload:{type:"token_count",rate_limits:{limit_id:"codex",primary:null,secondary:null}}})+"\n")' "$TMP/cxnull/2026/06/16/rollout-z.jsonl"; }
 
 # shared env: no color, no cache, ignore the real user config
 run(){ env NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null "$@" bash "$SL"; }
@@ -44,6 +46,10 @@ has '$1.25' "$o" && ok "cost as string -> no crash" || bad "cost string" "$o"
 fake 5
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cx")
 has "Cx 5h" "$o" && ok "fresh Codex -> full Cx row" || bad "codex fresh" "$o"
+
+fake_null
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cxnull")
+has "Cx n/a" "$o" && ok "Codex null limits -> visible n/a fallback" || bad "codex null limits" "$o"
 
 fake 240
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d;cx5h,cx7d' CC_USAGE_CODEX_DIR="$TMP/cx")
