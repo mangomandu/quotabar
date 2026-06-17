@@ -106,6 +106,10 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
 
 It drops `statusline.sh` into `~/.claude/hooks/`, adds a default `~/.claude/cc-usage.conf`, and wires `statusLine` into `~/.claude/settings.json` (backing it up first). Then **open a new Claude Code session** (or send a message) to see it. Needs `bash` + `node` (both already shipped with Claude Code) and `curl`.
 
+### Codex app discovery
+
+quotabar includes `.codex-plugin/plugin.json` so Codex can recognize the repository as a plugin and show its project card when installed from GitHub. The plugin metadata is for discovery and guidance; to actually wire the Claude Code statusline, run the installer above.
+
 ### Pick your OS
 
 | | what to do |

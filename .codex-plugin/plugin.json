@@ -1,0 +1,41 @@
+{
+  "name": "quotabar",
+  "version": "1.2.2",
+  "description": "Claude Code statusline for Claude Code and Codex usage limits.",
+  "author": {
+    "name": "mangomandu",
+    "url": "https://github.com/mangomandu"
+  },
+  "homepage": "https://github.com/mangomandu/quotabar",
+  "repository": "https://github.com/mangomandu/quotabar",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "statusline",
+    "usage-limits",
+    "quota"
+  ],
+  "interface": {
+    "displayName": "quotabar",
+    "shortDescription": "Show Claude Code and Codex usage limits in your statusline.",
+    "longDescription": "quotabar is a lightweight Claude Code statusline that displays 5-hour and weekly quota usage for Claude Code and local Codex sessions, plus context, model, and session cost. The Codex plugin metadata makes the project discoverable in Codex; run the installer from the README to wire the Claude Code statusline.",
+    "developerName": "mangomandu",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://github.com/mangomandu/quotabar",
+    "brandColor": "#5769F7",
+    "defaultPrompt": [
+      "Help me install quotabar for Claude Code.",
+      "Show me how quotabar reads Codex usage limits.",
+      "Customize my quotabar statusline layout."
+    ],
+    "screenshots": [
+      "./assets/demo.png",
+      "./assets/wide.png",
+      "./assets/stale.png"
+    ]
+  }
+}
