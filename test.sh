@@ -4,6 +4,7 @@
 SL="$(cd "$(dirname "$0")" && pwd)/statusline.sh"
 TMP="$(mktemp -d)" || { echo "cannot create temp dir (read-only FS?)"; exit 1; }
 trap 'rm -rf "$TMP"' EXIT
+export XDG_CACHE_HOME="$TMP/xdg"   # 모든 호출을 임시 캐시로 격리 — 실제 ~/.cache/quotabar 절대 안 건드림(출력 캐시 + cc-limits 스냅샷 포함)
 pass=0; fail=0
 G=$'\033[32m'; RED=$'\033[31m'; Z=$'\033[0m'
 ok(){  pass=$((pass+1)); printf "  ${G}PASS${Z} %s\n" "$1"; }
@@ -186,6 +187,81 @@ o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC
 # empty cx segments must not leave a dangling/double divider (no Codex data)
 o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC_USAGE_CODEX_DIR="$TMP/none")
 { ! has "│  │" "$o"; } && ok "absent cx -> divider cleanup (no doubled │)" || bad "double divider" "$o"
+
+# ===== standalone mode (--standalone / --tmux) + symmetric CC snapshot =====
+ESC=$'\033'
+SC="$TMP/scache"   # hermetic cache namespace (controls the CC snapshot)
+srun(){ env XDG_CACHE_HOME="$SC" NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" "$@" bash "$SL" --standalone </dev/null; }
+# plant a CC snapshot $1 minutes old (33% / 77%)
+ccsnap(){ mkdir -p "$SC/quotabar"; node -e 'const fs=require("fs");fs.writeFileSync(process.argv[1],JSON.stringify({five_hour:{used_percentage:33,resets_at:'$FUT'},seven_day:{used_percentage:77,resets_at:'$FUT'},ts:Date.now()-(+process.argv[2])*60000}))' "$SC/quotabar/cc-limits.json" "$1"; }
+
+# Codex fresh, no CC snapshot -> Codex only (CC segments cleaned away, no dangling divider)
+rm -rf "$SC"; fake 5
+o=$(srun)
+{ has "Cx 5h" "$o" && ! has "CC" "$o" && ! has "│" "$o"; } && ok "standalone: Codex only when no CC snapshot" || bad "standalone codex-only" "$o"
+
+# standalone must NOT read stdin: CC comes from snapshot, never the piped JSON
+rm -rf "$SC"; fake 5
+o=$(printf '%s' "$CC" | env XDG_CACHE_HOME="$SC" NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" bash "$SL" --standalone)
+{ has "Cx 5h" "$o" && ! has "74%" "$o"; } && ok "standalone ignores stdin (CC not from piped JSON)" || bad "standalone stdin leak" "$o"
+
+# CC mode writes the snapshot file (so standalone can read it later)
+rm -rf "$SC"
+printf '%s' "$CC" | env XDG_CACHE_HOME="$SC" CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null NO_COLOR=1 CC_USAGE_SEGMENTS=5h,7d bash "$SL" >/dev/null
+{ [ -f "$SC/quotabar/cc-limits.json" ] && has '"five_hour"' "$(cat "$SC/quotabar/cc-limits.json")"; } && ok "CC mode writes cc-limits snapshot" || bad "snapshot not written" "$(ls "$SC/quotabar" 2>&1)"
+
+# symmetric: fresh CC snapshot + fresh Codex -> BOTH show in standalone (divider between)
+rm -rf "$SC"; fake 5; ccsnap 0
+o=$(srun)
+{ has "CC 5h" "$o" && has "33%" "$o" && has "Cx 5h" "$o" && has "│" "$o"; } && ok "standalone: CC(snapshot) + Codex(files) both shown (symmetric)" || bad "standalone both" "$o"
+
+# stale CC snapshot -> CC hidden, Codex still shows (divider cleaned)
+rm -rf "$SC"; fake 5; ccsnap 99
+o=$(srun CC_USAGE_STALE_MIN=30)
+{ ! has "CC" "$o" && has "Cx 5h" "$o" && ! has "│" "$o"; } && ok "standalone: stale CC snapshot hidden" || bad "standalone stale CC" "$o"
+
+# stale Codex + no CC snapshot -> empty (disappears)
+rm -rf "$SC"; fake 240
+o=$(srun)
+{ [ -z "$o" ]; } && ok "standalone + stale Codex + no CC -> empty (disappears)" || bad "standalone empty" "$o"
+
+# --tmux -> tmux #[fg=...] markup, NO raw ANSI escape (color ON; both providers)
+rm -rf "$SC"; fake 5; ccsnap 0
+o=$(env XDG_CACHE_HOME="$SC" NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" bash "$SL" --standalone --tmux </dev/null)
+{ has "#[fg=" "$o" && ! has "$ESC" "$o"; } && ok "standalone --tmux -> #[fg=...] markup, no raw ESC" || bad "tmux markup" "$o"
+
+# standalone suppresses the update hint (else empty-on-idle is defeated)
+rm -rf "$SC"; mkdir -p "$SC/quotabar"; fake 5
+printf '%s\n' "$(date +%s)" > "$SC/quotabar/.update-check"; printf '9.9.9\n' > "$SC/quotabar/.update-available"
+o=$(env XDG_CACHE_HOME="$SC" NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" CC_USAGE_UPDATE=on bash "$SL" --standalone </dev/null)
+{ ! has "⬆" "$o"; } && ok "standalone -> update hint suppressed" || bad "standalone upd hint leak" "$o"
+
+# --watch: foreground loop renders standalone in place, never reads stdin, and is terminable.
+rm -rf "$SC"; fake 5
+o=$(env XDG_CACHE_HOME="$SC" NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" CC_USAGE_WATCH_SECS=1 timeout 2 bash "$SL" --watch </dev/null 2>&1); rc=$?
+{ { [ "$rc" -eq 124 ] || [ "$rc" -eq 0 ]; } && has $'\r\033[K' "$o" && has "Cx 5h" "$o"; } && ok "--watch -> in-place standalone render, terminable" || bad "watch" "rc=$rc out=$o"
+
+# debug: mode line (with ccSnapAge) + STANDALONE/TMUX not flagged as unknown keys
+rm -rf "$SC"; fake 5; ccsnap 0
+e=$(env XDG_CACHE_HOME="$SC" NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_CODEX_DIR="$TMP/cx" CC_USAGE_DEBUG=1 bash "$SL" --standalone --tmux </dev/null 2>&1 >/dev/null)
+{ has "mode: standalone=true" "$e" && has "ccSnapAgeMin=" "$e" && ! has "unknown CC_USAGE_* keys" "$e"; } && ok "standalone --debug: mode line + ccSnapAge + no unknown-key warning" || bad "standalone debug" "$e"
+
+# --setup: env-aware setup helper. tmux present -> tmux config; absent -> install advice.
+YB="$TMP/yestmux"; mkdir -p "$YB"; printf '#!/bin/sh\n' > "$YB/tmux"; chmod +x "$YB/tmux"
+o=$(PATH="$YB:$PATH" bash "$SL" --setup 2>&1)
+{ has "status-right" "$o" && has "standalone" "$o"; } && ok "--setup (tmux present) -> tmux status-right config" || bad "setup tmux-present" "$o"
+NB="$TMP/notmux"; mkdir -p "$NB"; ln -sf "$(command -v find)" "$NB/" 2>/dev/null
+o=$(PATH="$NB" /bin/bash "$SL" --setup 2>&1)
+{ has "install tmux" "$o" && ! has "status-right" "$o"; } && ok "--setup (no tmux) -> recommends installing tmux" || bad "setup no-tmux" "$o"
+
+# B: CC_USAGE_TMUX_DEDUP — in tmux ($TMUX set) the CC statusline drops quota (tmux bar shows it); plain terminal keeps full
+CCM='{"session_id":"t","rate_limits":{"five_hour":{"used_percentage":16,"resets_at":'$FUT'}},"model":{"display_name":"Opus 4.8"}}'
+o=$(printf '%s' "$CCM" | env NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h,model TMUX=/tmp/x CC_USAGE_TMUX_DEDUP=on bash "$SL")
+{ ! has "16%" "$o" && has "Opus" "$o"; } && ok "tmux dedup ON + in tmux -> quota dropped, session info kept" || bad "dedup in-tmux" "$o"
+o=$(printf '%s' "$CCM" | env -u TMUX NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h,model CC_USAGE_TMUX_DEDUP=on bash "$SL")
+has "16%" "$o" && ok "tmux dedup ON + plain terminal -> full (quota kept)" || bad "dedup plain" "$o"
+o=$(printf '%s' "$CCM" | env NO_COLOR=1 CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h,model TMUX=/tmp/x bash "$SL")
+has "16%" "$o" && ok "tmux dedup OFF (default) -> full even in tmux" || bad "dedup off default" "$o"
 
 # guard: the node -e '...' script must contain NO single quotes (a stray ' breaks the bash wrapper -> empty output)
 inner=$(awk '/\| node -e/{f=1;next} f&&$0=="\x27)"{f=0} f' "$SL")

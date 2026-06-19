@@ -26,6 +26,7 @@
 #   CC_USAGE_CODEX_DIR Codex 세션 루트(기본 ~/.codex/sessions)
 #   CC_USAGE_CACHE_TTL 같은 세션 재렌더 캐시 TTL(초). 기본 2. 0=비활성(항상 즉시 계산)
 #   CC_USAGE_STALE_MIN Codex가 이 분(min) 넘게 안 돌면 'Cx idle'로 접어 CC 뒤에 붙임. 기본 30. 0=끔
+#   CC_USAGE_WATCH_SECS --watch 재렌더 간격(초). 기본 5. 1 미만/비숫자는 보정.
 #   CC_USAGE_UPDATE    on 설정 시 기본 7일에 1회 백그라운드로 새 버전 확인 후 막대 끝에 '⬆ vX' 표시. 기본 off.
 #                      렌더는 안 막음(detached). 수동 갱신은 'statusline.sh --update'(언제든, 네트워크 필요).
 #   CC_USAGE_UPDATE_DAYS  위 확인 간격(일). 기본 7. 렌더 비용은 간격과 무관(파일 1회 읽기뿐).
@@ -52,8 +53,19 @@ _qb_gt() {
   return 1
 }
 
+# --- 플래그 파싱(순서 무관): --update(즉시 동작) / --standalone(=--codex, 독립 모드) / --tmux / --watch / --debug ---
+_standalone=0; _tmux=0; _watch=0; _do_update=0; _do_setup=0
+for _a in "$@"; do case "$_a" in
+  --update) _do_update=1;;
+  --setup) _do_setup=1;;
+  --standalone|--codex) _standalone=1;;
+  --tmux) _tmux=1;;
+  --watch) _watch=1; _standalone=1;;
+  --debug) export CC_USAGE_DEBUG=1;;
+esac; done
+
 # 수동 업데이트: 최신 statusline.sh를 받아 자기 자신을 덮어씀(언제든, node 불필요)
-if [ "${1:-}" = "--update" ]; then
+if [ "$_do_update" = 1 ]; then
   _self="${BASH_SOURCE[0]:-$0}"; _tmp="$(mktemp 2>/dev/null)" || { echo "✗ mktemp failed"; exit 1; }
   if curl -fsSL "https://raw.githubusercontent.com/mangomandu/quotabar/main/statusline.sh" -o "$_tmp" 2>/dev/null && [ -s "$_tmp" ]; then
     chmod +x "$_tmp" 2>/dev/null
@@ -65,9 +77,45 @@ if [ "${1:-}" = "--update" ]; then
   rm -f "$_tmp" 2>/dev/null; echo "✗ quotabar update failed (network or permissions)"; exit 1
 fi
 
+# 셋업 도우미: 환경 감지 후 standalone/tmux 설정 안내. tmux 없는 Codex 사용자에겐 설치 권장.
+# (일반 터미널에서 Codex 풀스크린 TUI 도중엔 바를 띄울 자리가 없으므로, 안내는 이 수동 명령/설치 시점에만 가능)
+if [ "$_do_setup" = 1 ]; then
+  _self="${BASH_SOURCE[0]:-$0}"   # 절대경로(복붙용 — tmux.conf는 다른 cwd에서 실행됨)
+  _dir="$(cd "$(dirname "$_self")" 2>/dev/null && pwd)"; [ -n "$_dir" ] && _self="$_dir/$(basename "$_self")"
+  printf '%s\n' "quotabar setup  (copy-paste; paths absolute)" "─────────────────────────────────────────"
+  if command -v tmux >/dev/null 2>&1; then
+    printf '%s\n' "tmux bar  → add to ~/.tmux.conf (append; won't clobber your existing bar):" \
+      "  set -ga status-right \"  #($_self --standalone --tmux)\"" \
+      "  set -g status-interval 5" \
+      "  set -ga terminal-overrides ',*:RGB'"
+  else
+    printf '%s\n' "always-on bar → install tmux:  sudo apt install tmux   (mac: brew install tmux)" \
+      "                then re-run: bash \"$_self\" --setup"
+  fi
+  printf '%s\n' "watch    → bash \"$_self\" --watch        (2nd pane · Ctrl-C)" \
+    "one-shot → bash \"$_self\" --standalone" \
+    "in Claude Code → register this script as your statusLine (install.sh does it)"
+  exit 0
+fi
+
+if [ "$_watch" = 1 ]; then
+  _self="${BASH_SOURCE[0]:-$0}"
+  _dir="$(cd "$(dirname "$_self")" 2>/dev/null && pwd)"; [ -n "$_dir" ] && _self="$_dir/$(basename "$_self")"
+  _secs="${CC_USAGE_WATCH_SECS:-5}"; case "$_secs" in ''|*[!0-9]*) _secs=5;; esac; [ "$_secs" -lt 1 ] 2>/dev/null && _secs=1
+  trap 'printf "\n"; exit 0' INT
+  _args=(--standalone)
+  [ "$_tmux" = 1 ] && _args+=(--tmux)
+  while :; do
+    _line="$(bash "$_self" "${_args[@]}" </dev/null)"
+    printf '\r\033[K%s' "$_line"
+    sleep "$_secs" || break
+  done
+  exit 0
+fi
+
 command -v node >/dev/null 2>&1 || { printf '⏳ cc-usage: node not found'; exit 0; }
 
-[ "$1" = "--debug" ] && export CC_USAGE_DEBUG=1   # 진단 출력(stderr). CC_USAGE_DEBUG=1 로도 가능
+# (--debug 는 위 플래그 루프에서 처리됨; CC_USAGE_DEBUG=1 로도 가능)
 
 # 설정 파일 로드: "KEY=value" 줄만 인식, 주석(#)/빈 줄 무시, 환경변수가 우선
 conf="${CC_USAGE_CONFIG:-$HOME/.claude/cc-usage.conf}"
@@ -87,17 +135,30 @@ if [ -f "$conf" ]; then
 fi
 
 # --- 캐시(#1): 같은 세션의 잦은 재렌더 시 node 미기동. TTL 내 + conf 미변경이면 캐시 사용 ---
-IN=$(cat)                                                  # stdin(JSON) 캡처
+# 독립 모드(CC 밖): CC가 stdin으로 JSON을 안 줌 → stdin 읽기 생략(안 그러면 cat이 EOF 기다리며 멈춤 = 프롬프트 먹통).
+# Codex 위주 세그먼트로 고정(반응형 WIDE 미적용 → CC 세그먼트 재유입/블랭크 가드 회피), node에 모드 전달.
+[ "$_tmux" = 1 ] && export CC_USAGE_TMUX=1   # --tmux: 출력 포맷(입력 모드와 무관 — standalone이든 CC stdin이든 tmux 마크업)
+if [ "$_standalone" = 1 ]; then
+  IN=""
+  export CC_USAGE_STANDALONE=1
+  export CC_USAGE_SEGMENTS="${CC_USAGE_SEGMENTS_STANDALONE:-5h,7d,sep,cx5h,cx7d}"   # 대칭: CC(스냅샷)+Codex(파일) 한 줄, 빈 쪽은 구분선 정리됨
+else
+  IN=$(cat)                                                  # stdin(JSON) 캡처
+fi
 ttl="${CC_USAGE_CACHE_TTL:-2}"; case "$ttl" in *[!0-9]*) ttl=0;; esac
 sid=default
 case "$IN" in *'"session_id":"'*) sid="${IN#*\"session_id\":\"}"; sid="${sid%%\"*}";; esac
 case "$sid" in *[!A-Za-z0-9._-]*|'') sid=default;; esac     # 안전한 파일명만
-# 반응형: 터미널이 넓으면(COLUMNS≥WIDE_AT) WIDE 레이아웃 사용. COLUMNS는 Claude Code가 줌(공짜).
+# 반응형: 터미널이 넓으면(COLUMNS≥WIDE_AT) WIDE 레이아웃 사용. COLUMNS는 Claude Code가 줌(공짜). 독립 모드는 미적용.
 cols="${COLUMNS:-0}"; case "$cols" in ''|*[!0-9]*) cols=0;; esac
 wat="${CC_USAGE_WIDE_AT:-120}"; case "$wat" in ''|*[!0-9]*) wat=120;; esac
 lw=n
-if [ -n "${CC_USAGE_SEGMENTS_WIDE:-}" ] && [ "$cols" -ge "$wat" ]; then export CC_USAGE_SEGMENTS="$CC_USAGE_SEGMENTS_WIDE"; lw=w; fi
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid-$lw"   # 폭(레이아웃)별 캐시
+if [ "$_standalone" != 1 ] && [ -n "${CC_USAGE_SEGMENTS_WIDE:-}" ] && [ "$cols" -ge "$wat" ]; then export CC_USAGE_SEGMENTS="$CC_USAGE_SEGMENTS_WIDE"; lw=w; fi
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"
+_ckey="$sid-$lw"
+[ "$_standalone" = 1 ] && _ckey="standalone-$lw"   # 독립 모드: 세션ID 없음 → 고정 네임스페이스
+[ "$_tmux" = 1 ] && _ckey="$_ckey-tmux"            # tmux 마크업 출력은 raw와 별도 캐시(충돌 방지)
+cache="$cache_dir/$_ckey"   # 폭(레이아웃)별 + 모드별 캐시
 
 # --- 업데이트 알림(opt-in: CC_USAGE_UPDATE=on). 기본 7일에 1회만 백그라운드로 버전 확인 — 렌더는 안 막음(detached).
 #     간격은 CC_USAGE_UPDATE_DAYS로 조정. 기본(off)일 땐 문자열 비교 1번이 전부.
@@ -105,6 +166,7 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/quotabar"; cache="$cache_dir/$sid-$lw
 upd_hint=""; _uon=0
 # 명시적 truthy 값일 때만 켬 — false/0/no/off/오타는 네트워크 안 건드림(Codex 리뷰 P2). case라 fork 0 + bash3 안전.
 case "${CC_USAGE_UPDATE:-}" in on|On|ON|1|true|True|TRUE|yes|Yes|YES) _uon=1;; esac
+[ "$_standalone" = 1 ] && _uon=0   # 독립 모드: 업데이트 알림 끔(CC 전용 기능 + idle 시 upd_hint가 남아 안 사라지는 것 방지)
 if [ "$_uon" = 1 ]; then
   _unow="${EPOCHSECONDS:-0}"; [ "$_unow" = 0 ] && _unow=$(date +%s 2>/dev/null || echo 0)
   _ud="${CC_USAGE_UPDATE_DAYS:-7}"; case "$_ud" in ''|*[!0-9]*) _ud=7;; esac; [ "$_ud" -lt 1 ] 2>/dev/null && _ud=7
@@ -153,6 +215,24 @@ const rl=d.rate_limits||{};
 const clean=s=>String(s==null?"":s).replace(/[\x00-\x1f\x7f-\x9f]/g,"");  // 터미널 제어문자(ESC 등) 제거 = 인젝션 방지
 
 const env=process.env;
+const standalone=!!env.CC_USAGE_STANDALONE, tmux=!!env.CC_USAGE_TMUX;
+// tmux 상태바는 raw ANSI(SGR)를 색칠 안 함 → 자체 마크업 #[fg=...] 로 변환하고 리터럴 #는 ## 로 이스케이프.
+const _h2=n=>{n=Number(n)||0;n=n<0?0:n>255?255:n;const s=n.toString(16);return s.length<2?"0"+s:s;};
+const dimC=env.CC_USAGE_TMUX_DIM||"colour244";   // tmux 흐림(빈막대·리셋·구분선) 색. conf로 조절. 기본 colour244
+const _sgrToTmux=codes=>{const parts=codes.split(";");let out="";
+  for(let k=0;k<parts.length;k++){const c=parts[k];
+    if(c===""||c==="0")out+="#[default]";
+    else if(c==="1")out+="#[bold]";
+    else if(c==="2")out+=(dimC==="dim"?"#[dim]":"#[fg="+dimC+"]");           // dim → CC_USAGE_TMUX_DIM: "dim"=진짜 흐림속성(CC와 동일) / 색이름·#hex=그 색. 기본 colour244
+    else if(c==="38"&&parts[k+1]==="2"){out+="#[fg=#"+_h2(parts[k+2])+_h2(parts[k+3])+_h2(parts[k+4])+"]";k+=4;}  // truecolor(#[fg=#rrggbb] 표시엔 tmux RGB 필요)
+    else if(c==="38"&&parts[k+1]==="5"){out+="#[fg=colour"+parts[k+2]+"]";k+=2;}                                  // 256색
+    else if(c==="32")out+="#[fg=green]";else if(c==="33")out+="#[fg=yellow]";else if(c==="31")out+="#[fg=red]";}
+  return out;};
+const toTmux=s=>{let r="",i=0;
+  while(i<s.length){
+    if(s[i]==="\x1b"&&s[i+1]==="["){const j=s.indexOf("m",i);if(j>=0){r+=_sgrToTmux(s.slice(i+2,j));i=j+1;continue;}}
+    r+=(s[i]==="#")?"##":s[i];i++;}
+  return r;};
 const cfg={
   rows:(env.CC_USAGE_SEGMENTS||"5h,7d").split(";")
         .map(r=>r.split(",").map(s=>s.trim()).filter(Boolean)).filter(r=>r.length),
@@ -163,6 +243,11 @@ const cfg={
   crit:parseInt(env.CC_USAGE_CRIT||"80",10),
   color:!env.NO_COLOR,
 };
+// B: tmux 중복 제거(opt-in CC_USAGE_TMUX_DEDUP). CC statusline이 tmux 안에서 돌면($TMUX 있음) 쿼터 세그먼트 제거
+// — tmux 바가 쿼터를 보여주니 중복 방지. 일반 터미널($TMUX 없음)에선 그대로 full 표시. 스냅샷 기록엔 영향 없음.
+if(!standalone && /^(on|1|true|yes)$/i.test(env.CC_USAGE_TMUX_DEDUP||"") && env.TMUX){
+  cfg.rows=cfg.rows.map(r=>r.filter(s=>s!=="5h"&&s!=="7d"&&s!=="cx5h"&&s!=="cx7d")).filter(r=>r.length);
+}
 
 // Codex: cx 세그먼트가 있을 때만, 모든 rollout 중 mtime 최신 파일에서 마지막 rate_limits 추출.
 // 파일 끝에서 점점 키워가며(256KB→최대 4MB) 읽어 큰 세션도 안 놓침. 서브셸 없이 node로.
@@ -170,32 +255,41 @@ let cx={},cxTs=0,codexFile=null;
 if(cfg.rows.some(r=>r.includes("cx5h")||r.includes("cx7d"))){
   try{
     const root=env.CC_USAGE_CODEX_DIR||require("os").homedir()+"/.codex/sessions";
-    let nm=-1;  // 전 파일 mtime 최신 선택(가장 정확). 캐시가 호출 빈도를 낮춰줌.
+    const cand=[];  // 모든 rollout 후보 {p,m}; mtime 최신순으로 정렬해 가장 최근 rate_limits를 찾음
     const walk=(dir,depth)=>{
       let ents;try{ents=fs.readdirSync(dir,{withFileTypes:true})}catch(e){return}
       for(const e of ents){const p=dir+"/"+e.name;
         if(depth<3){if(e.isDirectory())walk(p,depth+1)}
         else if(e.isFile()&&e.name.startsWith("rollout-")&&e.name.endsWith(".jsonl")){
           let m;try{m=fs.statSync(p).mtimeMs}catch(_){continue}
-          if(m>nm){nm=m;codexFile=p}}}
+          cand.push({p:p,m:m})}}
     };
     walk(root,0);
-    if(codexFile){
-      const fd=fs.openSync(codexFile,"r"),sz=fs.fstatSync(fd).size;
+    cand.sort((a,b)=>b.m-a.m);
+    // 파일 끝에서 점점 키워가며(256KB→최대 4MB) 마지막 rate_limits 추출. 서브셸 없이 node로.
+    const tryRead=p=>{
+      let lcx={},lts=0;
+      const fd=fs.openSync(p,"r"),sz=fs.fstatSync(fd).size;
       for(let chunk=262144;;chunk*=4){
         const n=Math.min(sz,chunk);
         const b=Buffer.alloc(n);fs.readSync(fd,b,0,n,sz-n);
         const arr=b.toString("utf8").split("\n");
-        const start=(n<sz)?1:0;   // 전체를 안 읽었으면 잘린 첫 줄은 버림
+        const start=(n<sz)?1:0;   // 전체를 안 읽었으면 잘린 첫 줄은 버림(부분기록 라인도 자연히 건너뜀)
         for(let i=arr.length-1;i>=start;i--){
           if(arr[i].includes("\"rate_limits\"")){
-            try{const pj=JSON.parse(arr[i]);if(pj.payload&&pj.payload.rate_limits){cx=pj.payload.rate_limits;cxTs=Date.parse(pj.timestamp)||0}}catch(_){}
-            if(Object.keys(cx).length)break;
+            try{const pj=JSON.parse(arr[i]);if(pj.payload&&pj.payload.rate_limits){lcx=pj.payload.rate_limits;lts=Date.parse(pj.timestamp)||0}}catch(_){}
+            if(Object.keys(lcx).length)break;
           }
         }
-        if(Object.keys(cx).length||n>=sz||chunk>=4194304)break;
+        if(Object.keys(lcx).length||n>=sz||chunk>=4194304)break;
       }
       fs.closeSync(fd);
+      return {cx:lcx,ts:lts};
+    };
+    // 최신 파일에 rate_limits가 없을 수 있어(부분기록·다른 세션) 최신 몇 개를 차례로 시도(상한 8).
+    for(let k=0;k<cand.length&&k<8;k++){
+      const rr=tryRead(cand[k].p);
+      if(Object.keys(rr.cx).length){cx=rr.cx;cxTs=rr.ts;codexFile=cand[k].p;break;}
     }
   }catch(e){}
 }
@@ -259,8 +353,27 @@ const resetStr=o=>{
   return rel;
 };
 
-const staleMin=parseInt(env.CC_USAGE_STALE_MIN||"30",10);  // Codex가 이 분(min) 넘게 안 돌면 idle 로 접음
+const staleMin=parseFloat(env.CC_USAGE_STALE_MIN||"30");  // 분(min); 소수 OK(0.5=30초, 디버깅용). 0=끔
 const codexStale=cxTs>0&&staleMin>0&&Date.now()-cxTs>staleMin*60000;
+// 대칭 스냅샷: CC는 자기 한도를 디스크에 안 남김(stdin으로만 줌) → CC 모드에서 quotabar가 대신 파일에 저장하고,
+// standalone(tmux/프롬프트)에선 그 파일을 읽어 CC도 표시(Codex가 파일로 읽히는 것과 대칭). staleMin 넘으면 무시.
+const cacheDir=(env.XDG_CACHE_HOME||(require("os").homedir()+"/.cache"))+"/quotabar";
+const ccSnap=cacheDir+"/cc-limits.json";
+let ccSnapAge=-1;
+if(!standalone){
+  if(rl.five_hour||rl.seven_day){
+    try{fs.mkdirSync(cacheDir,{recursive:true});fs.writeFileSync(ccSnap,JSON.stringify({five_hour:rl.five_hour,seven_day:rl.seven_day,ts:Date.now()}));}catch(e){}
+  }
+}else{
+  try{const sn=JSON.parse(fs.readFileSync(ccSnap,"utf8"));
+    if(sn&&sn.ts){ccSnapAge=Math.floor((Date.now()-sn.ts)/60000);
+      if(staleMin<=0||Date.now()-sn.ts<=staleMin*60000){
+        if(sn.five_hour)rl.five_hour=sn.five_hour;
+        if(sn.seven_day)rl.seven_day=sn.seven_day;
+      }
+    }
+  }catch(e){}
+}
 // prov=공급자 태그키(cc/cx), win=윈도우 태그키(5h/7d), tagKey=단일 태그(ctx 등)
 // 토큰 수 사람친화 표기: 396176→"396k", 1000000→"1M", 1500000→"1.5M"
 const hum=n=>{n=Number(n);if(!Number.isFinite(n))return null;
@@ -303,6 +416,7 @@ const render=(key,showProv)=>{
   if(key==="sep"||key==="|")return C.DIM+"│"+C.R;   // 구분선(예: 같은 줄에서 CC│Cx)
   const s=SEG[key];if(!s)return null;
   if(s.prov==="cx"&&codexStale){   // Codex 스테일 → 막대 대신 Cx idle 을 그 자리에(첫 cx만), 나머지 cx는 숨김
+    if(standalone)return null;     // 독립 모드: Cx idle 안 띄우고 그냥 사라짐(빈 출력 → 캐시 안 됨 → 재개 시 즉시 복귀)
     if(cxIdleShown)return null;
     cxIdleShown=true;
     const cxt=tag.cx||"Cx";
@@ -355,13 +469,13 @@ let lines=cfg.rows.map(row=>{
 }).filter(Boolean);
 // CC 한도가 설정됐는데 rate_limits가 없으면(세션 처음 로딩 전, 또는 오래 유휴로 식음) → statusline 통째로 비움.
 // 모델·effort 등 부분만 외롭게 띄우지 않음(빈 출력은 v1.0.2에 따라 캐시 안 함 → 첫 활동 시 즉시 복구).
-if(cfg.rows.some(r=>r.includes("5h")||r.includes("7d")) && !rl.five_hour && !rl.seven_day){
+if(!standalone && cfg.rows.some(r=>r.includes("5h")||r.includes("7d")) && !rl.five_hour && !rl.seven_day){
   lines=[];
 }
 
 // #4 진단: CC_USAGE_DEBUG(또는 --debug) 시 파싱·설정·codex 상태를 stderr로 덤프
 if(env.CC_USAGE_DEBUG){
-  const KNOWN=["SEGMENTS","SEGMENTS_WIDE","WIDE_AT","RESET","STYLE","BARS","WARN","CRIT","THRESHOLD","CODEX_DIR","CACHE_TTL","STALE_MIN","UPDATE","UPDATE_DAYS","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE"].map(k=>"CC_USAGE_"+k);
+  const KNOWN=["SEGMENTS","SEGMENTS_WIDE","SEGMENTS_STANDALONE","WIDE_AT","RESET","STYLE","BARS","WARN","CRIT","THRESHOLD","CODEX_DIR","CACHE_TTL","STALE_MIN","WATCH_SECS","UPDATE","UPDATE_DAYS","TAG_CC","TAG_CX","TAG_5H","TAG_7D","TAG_CTX","TAGCOLOR_CC","TAGCOLOR_CX","CONFIG","DEBUG","CODEX_LINE","STANDALONE","TMUX","TMUX_DEDUP","TMUX_DIM"].map(k=>"CC_USAGE_"+k);
   const unknown=Object.keys(env).filter(k=>k.indexOf("CC_USAGE_")===0&&KNOWN.indexOf(k)<0);
   const pc=o=>o&&o.used_percentage!=null?o.used_percentage+"%":"-";
   const px=o=>o&&o.used_percent!=null?o.used_percent+"%":"-";
@@ -372,9 +486,12 @@ if(env.CC_USAGE_DEBUG){
   E.write("  config: segments="+JSON.stringify(cfg.rows)+" reset="+cfg.reset+" style="+(cfg.ascii?"ascii":"unicode")+" bars="+cfg.width+" warn="+cfg.warn+" crit="+cfg.crit+" color="+(cfg.color?"on":"off")+"\n");
   E.write("  tags: cc="+tag.cc+" cx="+tag.cx+" 5h="+tag["5h"]+" 7d="+tag["7d"]+" ctx="+tag.ctx+"\n");
   E.write("  codex: file="+(clean(codexFile)||"(none)")+" staleMin="+staleMin+" stale="+codexStale+" ageMin="+(cxTs?Math.floor((Date.now()-cxTs)/60000):"-")+" primary="+px(cx.primary)+" secondary="+px(cx.secondary)+"\n");
+  E.write("  mode: standalone="+standalone+" tmux="+tmux+(standalone?" ccSnapAgeMin="+(ccSnapAge<0?"(none)":ccSnapAge):"")+(standalone&&!lines.length?"  (empty: no fresh CC/Codex data — disappears by design)":"")+"\n");
   if(unknown.length)E.write("  WARNING unknown CC_USAGE_* keys (typo?): "+unknown.map(clean).join(", ")+"\n");
 }
-process.stdout.write(lines.join("\n"));
+let outStr=lines.join("\n");
+if(tmux)outStr=toTmux(outStr);   // tmux 상태바용 #[...] 마크업으로 변환(--tmux)
+process.stdout.write(outStr);
 ')
 printf '%s' "$out$upd_hint"   # upd_hint: CC_USAGE_UPDATE=on이고 새 버전 감지됐을 때만, 아니면 빈 문자열
 # 캐시 갱신(실패해도 무시). 빈 출력은 캐시 안 함: 첫 세션(rate_limits 도착 전)의
