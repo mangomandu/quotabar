@@ -245,7 +245,7 @@ Everything happens in **one short-lived `node` process** (zero on a cache hit) �
 
 ## Development
 
-Run `bash test.sh` for the test suite (51 assertions; needs `bash` + `node`). For diagnostics, `CC_USAGE_DEBUG=1 … bash statusline.sh` (or `--debug`) prints the parsed data, resolved config, chosen Codex file + freshness, and any unknown `CC_USAGE_*` keys (typos) to stderr.
+Run `bash test.sh` for the test suite (52 assertions; needs `bash` + `node`). For diagnostics, `CC_USAGE_DEBUG=1 … bash statusline.sh` (or `--debug`) prints the parsed data, resolved config, chosen Codex file + freshness, and any unknown `CC_USAGE_*` keys (typos) to stderr.
 
 ## License
 

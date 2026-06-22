@@ -245,7 +245,7 @@ CC_USAGE_TAGCOLOR_CX=codex    # 내장: Claude Code 컴팩팅 블루 #5769f7
 
 ## 개발
 
-`bash test.sh`로 테스트(어설션 51개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
+`bash test.sh`로 테스트(어설션 52개; `bash`+`node` 필요). 진단은 `CC_USAGE_DEBUG=1 … bash statusline.sh`(또는 `--debug`) — 파싱된 데이터·적용 설정·고른 Codex 파일·신선도·인식 못한 `CC_USAGE_*` 키(오타)를 stderr로 출력.
 
 ## 라이선스
 

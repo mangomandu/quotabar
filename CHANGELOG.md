@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.2.4
+
+Bug-fix pass from a second Codex audit.
+
+**Fixed**
+- Codex bars no longer blank when you start a fresh Codex session: rollout files are
+  scanned newest-first and quotabar uses the most recent one that actually carries a
+  `rate_limits` event (up to the 8 newest), instead of only reading the single newest
+  file — which a brand-new session leaves without limits yet, hiding the prior session's.
+- `--update` now runs `bash -n` on the downloaded file before replacing itself, so a
+  download truncated mid-script (which still has the version header) can't clobber the
+  installed copy.
+- A successful render can no longer exit non-zero: an unwritable cache dir produced
+  correct output but a failing exit status.
+- `EPOCHSECONDS` is trusted only on bash 5+ (where it's a dynamic builtin); on older
+  bash — where a same-named env var would be a frozen value — it falls back to `date`,
+  so TTL/throttle math can't freeze.
+
+**install.sh**
+- Downloads land in a temp file and are validated before an atomic rename, so an
+  interrupted transfer can't leave a truncated `statusline.sh` or a partial config.
+- A `settings.json` that exists but isn't valid JSON is left untouched (it used to be
+  silently overwritten with a fresh `{}`, discarding the user's settings).
+- The wired `statusLine.command` quotes the script path, so a config dir containing
+  spaces still works.
+
+**Quality**
+- Test suite at **52 assertions** (added the multi-rollout fallback regression).
+
 ## v1.2.3
 
 **Changed**

@@ -228,6 +228,16 @@ printf '%s\n' '{"timestamp":"2026-06-16T00:00:00Z","type":"event_msg","payload":
 e=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=cx5h CC_USAGE_CODEX_DIR="$TMP/cxbad" CC_USAGE_DEBUG=1 2>&1 >/dev/null)
 has "no rate_limits parsed" "$e" && ok "Codex file present but unparseable -> debug warns (format guard)" || bad "codex guard" "$e"
 
+# multi-rollout: the NEWEST rollout has no rate_limits (fresh session) but an OLDER one does ->
+# fall back to the older rollout instead of blanking Codex (Codex review P2 fix).
+rm -rf "$TMP/cxmulti"; mkdir -p "$TMP/cxmulti/2026/06/16"
+node -e 'const fs=require("fs"),d=process.argv[1];
+  fs.writeFileSync(d+"/rollout-old.jsonl",JSON.stringify({timestamp:new Date().toISOString(),type:"event_msg",payload:{rate_limits:{primary:{used_percent:33,resets_at:'$FUT'},secondary:{used_percent:44,resets_at:'$FUT'}}}})+"\n");
+  fs.writeFileSync(d+"/rollout-new.jsonl",JSON.stringify({timestamp:new Date().toISOString(),type:"session_meta",payload:{cwd:"/x"}})+"\n");
+  const now=Date.now()/1000; fs.utimesSync(d+"/rollout-old.jsonl",now-100,now-100); fs.utimesSync(d+"/rollout-new.jsonl",now,now);' "$TMP/cxmulti/2026/06/16"
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=cx5h CC_USAGE_CODEX_DIR="$TMP/cxmulti")
+has "Cx 5h" "$o" && ok "newest rollout lacks rate_limits -> falls back to older rollout" || bad "multi-rollout fallback" "$o"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]

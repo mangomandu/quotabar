@@ -16,13 +16,21 @@ command -v curl >/dev/null 2>&1 || { echo "✗ curl is required to download the 
 
 mkdir -p "$HOOKS"
 
+# Download into a temp file, validate, then atomically rename — so an interrupted/failed
+# transfer can never leave a truncated live statusline.sh or a partial config behind.
 echo "→ Downloading statusline.sh"
-curl -fsSL "$RAW/statusline.sh" -o "$HOOKS/statusline.sh"
-chmod +x "$HOOKS/statusline.sh"
+sl_tmp="$HOOKS/.statusline.sh.tmp.$$"
+curl -fsSL "$RAW/statusline.sh" -o "$sl_tmp"
+grep -q '^# quotabar v' "$sl_tmp" || { echo "✗ download looks corrupt (missing quotabar header) — aborting"; rm -f "$sl_tmp"; exit 1; }
+chmod +x "$sl_tmp"
+mv "$sl_tmp" "$HOOKS/statusline.sh"
 
 if [ ! -f "$CLAUDE_DIR/cc-usage.conf" ]; then
   echo "→ Installing default config"
-  curl -fsSL "$RAW/cc-usage.conf" -o "$CLAUDE_DIR/cc-usage.conf"
+  cf_tmp="$CLAUDE_DIR/.cc-usage.conf.tmp.$$"
+  curl -fsSL "$RAW/cc-usage.conf" -o "$cf_tmp"
+  [ -s "$cf_tmp" ] || { echo "✗ config download failed — aborting"; rm -f "$cf_tmp"; exit 1; }
+  mv "$cf_tmp" "$CLAUDE_DIR/cc-usage.conf"
 else
   echo "→ Keeping your existing $CLAUDE_DIR/cc-usage.conf"
 fi
@@ -34,7 +42,14 @@ node -e '
 const fs=require("fs");
 const p=process.argv[1], cmd=process.argv[2];
 let s={};
-try{ s=JSON.parse(fs.readFileSync(p,"utf8")) }catch(e){}
+try{ s=JSON.parse(fs.readFileSync(p,"utf8")) }
+catch(e){
+  if(e.code!=="ENOENT"){   // file exists but is not valid JSON (hand-edited?) -> never overwrite it
+    console.log("! "+p+" exists but is not valid JSON — leaving it untouched.");
+    console.log("  Add this statusLine entry yourself:\n    "+cmd);
+    process.exit(0);
+  }
+}
 if(s.statusLine && s.statusLine.command && s.statusLine.command!==cmd){
   console.log("! settings.json already has a different statusLine. Left it unchanged.");
   console.log("  To use this one, set statusLine.command to:\n    "+cmd);
@@ -43,7 +58,7 @@ if(s.statusLine && s.statusLine.command && s.statusLine.command!==cmd){
   fs.writeFileSync(p, JSON.stringify(s,null,2)+"\n");
   console.log("✓ statusLine wired up in "+p);
 }
-' "$SETTINGS" "bash $HOOKS/statusline.sh"
+' "$SETTINGS" "bash \"$HOOKS/statusline.sh\""
 
 echo ""
 echo "✓ Done. Open a new Claude Code session (or refresh) to see it."
