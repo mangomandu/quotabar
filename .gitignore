@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Local Claude Code session state (not part of the project)
+.claude/
+
+# Runtime cache the statusline writes
+.cache/

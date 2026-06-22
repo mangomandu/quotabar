@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.2.3
+
+**Changed**
+- Cache-hit render is now fork-free where the shell allows it: stdin is read with
+  `$(</dev/stdin)` and the cache file with `$(<file)` (no `cat`), and the time check
+  uses the `EPOCHSECONDS` builtin (bash 5+) with a `date` fallback — so the common
+  path spawns no helper processes on a modern bash (and one fewer everywhere else).
+  Output is byte-identical to before.
+
+**Added**
+- `--update` now verifies the downloaded file actually carries the `# quotabar v…`
+  header before overwriting itself — a 404 page or truncated download can no longer
+  clobber the installed script.
+- `CC_USAGE_DEBUG` warns when a Codex rollout file is found but no `rate_limits`
+  could be parsed (an early signal that Codex changed its session format), instead
+  of silently showing empty Codex bars.
+
+**Quality**
+- Test suite at **51 assertions** (was 41): added a `node --check` syntax guard for
+  the inline program, plus coverage for `RESET=clock`/`both`, custom `CC_USAGE_BARS`
+  width, the reset countdown, multi-row (`;`) layout, `cost` as a number, tag colors
+  (named + `#hex`), and the new Codex format guard.
+- CI: GitHub Actions runs `bash test.sh` on Linux and macOS for every push/PR.
+
 ## v1.2.2
 
 **Changed**

@@ -191,6 +191,43 @@ o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h,7d,sep,cx5h,cx7d,sep,model' CC
 inner=$(awk '/\| node -e/{f=1;next} f&&$0=="\x27)"{f=0} f' "$SL")
 { ! printf '%s' "$inner" | grep -q "'"; } && ok "node -e block has no stray single quotes (bash wrapper intact)" || bad "stray single quote in node block" "$(printf '%s' "$inner" | grep -n "'" | head -3)"
 
+# guard: the inline node program is valid JS — a syntax slip would silently blank the statusline
+printf '%s' "$inner" > "$TMP/inner.js"
+node --check "$TMP/inner.js" 2>/dev/null && ok "inline node program is valid JS (node --check)" || bad "node --check failed" "$(node --check "$TMP/inner.js" 2>&1 | head -3)"
+
+# --- core render coverage (reset modes, bar width, multi-row, cost number, tag color) ---
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h)
+has "·" "$o" && ok "limit segment shows reset countdown (·)" || bad "reset suffix" "$o"
+
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h CC_USAGE_RESET=clock)
+has "→" "$o" && ok "RESET=clock -> wall-clock (→HH:MM)" || bad "reset clock" "$o"
+
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h CC_USAGE_RESET=both)
+has "(→" "$o" && ok "RESET=both -> relative + (→clock)" || bad "reset both" "$o"
+
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=5h CC_USAGE_STYLE=ascii CC_USAGE_BARS=20)
+n=$(printf '%s' "$o" | tr -cd '#-' | wc -c | tr -d ' ')
+[ "$n" = 20 ] && ok "CC_USAGE_BARS=20 -> 20-cell bar" || bad "bars width" "got $n cells in |$o|"
+
+o=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS='5h;7d')
+nl=$(printf '%s' "$o" | tr -cd '\n' | wc -c | tr -d ' ')
+{ [ "$nl" = 1 ] && has "CC 5h" "$o" && has "CC 7d" "$o"; } && ok "';' -> two rows (provider tag per line)" || bad "multi-row" "nl=$nl |$o|"
+
+o=$(printf '%s' '{"cost":{"total_cost_usd":1.5}}' | run CC_USAGE_SEGMENTS=cost)
+has '$1.50' "$o" && ok "cost as number -> \$1.50" || bad "cost number" "$o"
+
+# tag color (needs color ON): named -> 256-index, #hex -> truecolor
+o=$(printf '%s' "$CC" | env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h CC_USAGE_TAGCOLOR_CC=red bash "$SL")
+has "38;5;196" "$o" && ok "TAGCOLOR_CC=red -> ANSI 256 color on tag" || bad "tagcolor named" "$o"
+o=$(printf '%s' "$CC" | env NO_COLOR= CC_USAGE_CACHE_TTL=0 CC_USAGE_CONFIG=/dev/null CC_USAGE_SEGMENTS=5h CC_USAGE_TAGCOLOR_CC='#da7756' bash "$SL")
+has "38;2;218;119;86" "$o" && ok "TAGCOLOR_CC=#hex -> truecolor on tag" || bad "tagcolor hex" "$o"
+
+# Codex format guard: a rollout file with no rate_limits -> debug warns (instead of silently blank bars)
+rm -rf "$TMP/cxbad"; mkdir -p "$TMP/cxbad/2026/06/16"
+printf '%s\n' '{"timestamp":"2026-06-16T00:00:00Z","type":"event_msg","payload":{"unrelated":1}}' > "$TMP/cxbad/2026/06/16/rollout-x.jsonl"
+e=$(printf '%s' "$CC" | run CC_USAGE_SEGMENTS=cx5h CC_USAGE_CODEX_DIR="$TMP/cxbad" CC_USAGE_DEBUG=1 2>&1 >/dev/null)
+has "no rate_limits parsed" "$e" && ok "Codex file present but unparseable -> debug warns (format guard)" || bad "codex guard" "$e"
+
 echo ""
 printf "%d passed, %d failed\n" "$pass" "$fail"
 [ "$fail" -eq 0 ]
