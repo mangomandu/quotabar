@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.5
+
+**install.sh** — follow-up hardening from a second review of the v1.2.4 changes.
+- The wired `statusLine.command` now POSIX single-quotes the script path
+  (`bash -- '<path>'`), so a path with spaces, `$`, backticks, `"`, or `'` can't be
+  reinterpreted by the shell when Claude Code runs it.
+- Re-running the installer **migrates** the older unquoted (`bash <path>`) and interim
+  double-quoted (`bash "<path>"`) commands to the safe form, instead of refusing them
+  as "a different statusLine" and forcing a manual edit.
+
 ## v1.2.4
 
 Bug-fix pass from a second Codex audit.

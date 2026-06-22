@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quotabar v1.2.4 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
+# quotabar v1.2.5 — Claude Code statusline  (https://github.com/mangomandu/quotabar)
 # Claude Code(공식 rate_limits) + Codex(세션 파일 rate_limits)의 5시간/주간 한도,
 # 그리고 컨텍스트/모델/비용을 막대 바 + 색상으로 표시. 외부 의존성 없음(node 제외).
 #
@@ -36,7 +36,7 @@
 # 자동으로 적용됩니다(JSON 편집 불필요). 환경변수가 있으면 환경변수가 우선.
 # 파일 위치는 CC_USAGE_CONFIG 로 바꿀 수 있습니다.
 
-VER="1.2.4"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
+VER="1.2.5"   # 헤더의 'quotabar vX.Y.Z'와 동일하게 유지 — 업데이트 비교/표시에 사용
 
 # 버전 비교: $1 > $2 이면 0. 점 구분 숫자, fork·GNU(sort -V) 비의존(macOS/BSD 안전). 업데이트 알림 표시에만 씀.
 _qb_gt() {

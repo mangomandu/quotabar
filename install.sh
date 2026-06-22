@@ -40,7 +40,12 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 
 node -e '
 const fs=require("fs");
-const p=process.argv[1], cmd=process.argv[2];
+const p=process.argv[1], hook=process.argv[2];
+// POSIX single-quote the path: handles spaces, $, backticks, ", and \ alike. `--` guards a leading dash.
+const cmd="bash -- \x27"+hook.replace(/\x27/g,"\x27\\\x27\x27")+"\x27";
+// commands we recognize as "ours" (so re-running migrates legacy forms instead of refusing): the new
+// single-quoted form, the old unquoted `bash <path>`, and the interim double-quoted `bash "<path>"`.
+const ours=[cmd, "bash "+hook, "bash \""+hook+"\""];
 let s={};
 try{ s=JSON.parse(fs.readFileSync(p,"utf8")) }
 catch(e){
@@ -50,7 +55,8 @@ catch(e){
     process.exit(0);
   }
 }
-if(s.statusLine && s.statusLine.command && s.statusLine.command!==cmd){
+const cur=s.statusLine && s.statusLine.command;
+if(cur && ours.indexOf(cur)<0){
   console.log("! settings.json already has a different statusLine. Left it unchanged.");
   console.log("  To use this one, set statusLine.command to:\n    "+cmd);
 } else {
@@ -58,7 +64,7 @@ if(s.statusLine && s.statusLine.command && s.statusLine.command!==cmd){
   fs.writeFileSync(p, JSON.stringify(s,null,2)+"\n");
   console.log("✓ statusLine wired up in "+p);
 }
-' "$SETTINGS" "bash \"$HOOKS/statusline.sh\""
+' "$SETTINGS" "$HOOKS/statusline.sh"
 
 echo ""
 echo "✓ Done. Open a new Claude Code session (or refresh) to see it."
