@@ -19,6 +19,8 @@
 
 </div>
 
+> **유지보수 상태:** 아카이브됨 / 더 이상 적극적으로 유지보수하지 않습니다. 터미널 기반 Claude Code + Codex 워크플로우용으로 만들었고, 작성자가 Codex 앱으로 옮긴 뒤에는 더 이상 사용하지 않습니다.
+
 [Claude Code](https://claude.com/claude-code) 상태줄(statusline)에 AI 코딩 **사용 한도** — 정액제에서 진짜 신경 쓰이는 **5시간 / 주간** 한도 —를 색 막대로 보여주는 작은 도구입니다. **[Claude Code](https://claude.com/claude-code)와 [Codex](https://github.com/openai/codex)를 나란히** 추적하고, 컨텍스트 %·모델·세션 비용도 함께 표시합니다.
 
 **`bash` + `node`만 필요**(Claude Code가 이미 Node 사용) · **파일 하나** · **데몬 없음** · **네트워크 없음**.

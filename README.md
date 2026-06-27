@@ -19,6 +19,8 @@
 
 </div>
 
+> **Maintenance status:** archived / no longer actively maintained. This was built for a terminal-based Claude Code + Codex workflow and is no longer used by the author after moving to the Codex app.
+
 A tiny [Claude Code](https://claude.com/claude-code) statusline that shows the **usage limits** you actually watch on a flat-rate plan — your **5-hour** and **weekly** quota — as colored bars. It tracks **Claude Code and [Codex](https://github.com/openai/codex) side by side**, plus context %, model, and session cost.
 
 **`bash` + `node` only** (Claude Code already ships Node) · **one file** · **no daemon** · **no network**.
