@@ -108,6 +108,12 @@ curl -fsSL https://raw.githubusercontent.com/mangomandu/quotabar/main/install.sh
 
 `~/.claude/hooks/`에 `statusline.sh`, 기본 `~/.claude/cc-usage.conf`를 깔고, `~/.claude/settings.json`에 `statusLine` 연결(기존 백업). 그다음 **새 Claude Code 세션을 열면**(또는 메시지 한 번 보내면) 보입니다. `bash`+`node`(둘 다 Claude Code에 이미 포함)와 `curl` 필요.
 
+### Codex 앱 표시
+
+quotabar는 `.codex-plugin/plugin.json`을 포함하므로 GitHub에서 설치했을 때 Codex가 저장소를 플러그인으로 인식하고 프로젝트 카드를 표시할 수 있습니다. 이 플러그인 메타데이터는 발견과 안내용입니다. 실제 Claude Code statusline 연결은 위 설치 명령을 실행해야 합니다.
+
+Codex 플러그인에는 Codex 안에서 설치, 업데이트, 문제 해결, 커스터마이즈를 안내하는 `quotabar` skill도 포함됩니다.
+
 ### OS별
 
 | | 할 일 |
